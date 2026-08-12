@@ -1,0 +1,1068 @@
+.daymark-calendar-view {
+  --daymark-control-icon-size: 16px;
+  --daymark-control-size: 30px;
+  box-sizing: border-box;
+  color: var(--text-normal);
+  container-name: daymark-sidebar;
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  max-width: 100%;
+  min-height: 100%;
+  min-width: 0;
+  overflow: hidden;
+  padding: 0 var(--size-4-3);
+  position: relative;
+  width: auto;
+}
+
+.daymark-calendar-view.has-footer {
+  padding-bottom: 0;
+}
+
+.daymark-calendar-header {
+  align-items: center;
+  display: flex;
+  flex: 0 0 auto;
+  max-width: 100%;
+  margin: 0 var(--size-4-1) var(--size-4-2);
+  min-width: 0;
+  padding: 0;
+}
+
+.daymark-calendar-title {
+  color: var(--text-normal);
+  flex: 1 1 auto;
+  font-family: var(--font-interface);
+  font-size: calc(var(--font-adaptive-small, var(--font-ui-medium)) + 2px);
+  font-weight: var(--font-semibold);
+  letter-spacing: 0.04em;
+  line-height: 1.25;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.daymark-calendar-view .daymark-calendar-mode-toggle {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-s);
+  box-shadow: none;
+  display: inline-flex;
+  flex: 0 0 auto;
+  height: var(--daymark-control-size);
+  justify-content: center;
+  margin-right: var(--size-4-1);
+  min-height: var(--daymark-control-size);
+  padding: 0;
+  width: var(--daymark-control-size);
+}
+
+.daymark-calendar-view .daymark-calendar-mode-toggle:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.daymark-calendar-view .daymark-calendar-mode-toggle:hover svg {
+  color: var(--text-normal);
+}
+
+.daymark-calendar-mode-toggle svg {
+  color: var(--text-muted);
+  height: var(--daymark-control-icon-size);
+  width: var(--daymark-control-icon-size);
+}
+
+.daymark-calendar-header-controls {
+  align-items: center;
+  display: flex;
+  flex: 0 0 auto;
+  gap: 2px;
+  justify-content: center;
+  margin-left: auto;
+}
+
+.daymark-calendar-view .daymark-calendar-nav {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-s);
+  box-shadow: none;
+  display: inline-flex;
+  height: var(--daymark-control-size);
+  justify-content: center;
+  min-height: var(--daymark-control-size);
+  padding: 0;
+  width: var(--daymark-control-size);
+}
+
+.daymark-calendar-view .daymark-calendar-today {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-s);
+  box-shadow: none;
+  color: var(--text-muted);
+  display: inline-flex;
+  font-family: var(--font-interface);
+  font-size: var(--font-adaptive-smaller, var(--font-ui-small));
+  font-weight: 500;
+  height: var(--daymark-control-size);
+  justify-content: center;
+  letter-spacing: 0;
+  margin: 0;
+  min-height: var(--daymark-control-size);
+  padding: 0 10px;
+}
+
+.daymark-calendar-today-icon {
+  display: none;
+}
+
+.daymark-calendar-today-icon,
+.daymark-calendar-today-icon svg {
+  height: var(--daymark-control-icon-size);
+  width: var(--daymark-control-icon-size);
+}
+
+.daymark-calendar-view .daymark-calendar-today:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.daymark-calendar-nav svg {
+  color: var(--text-faint);
+  height: calc(var(--daymark-control-icon-size) - 2px);
+  opacity: 0.7;
+  width: calc(var(--daymark-control-icon-size) - 2px);
+}
+
+.daymark-calendar-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.daymark-calendar-view .daymark-calendar-nav:hover {
+  background: var(--background-modifier-hover);
+}
+
+.daymark-calendar-nav:hover svg {
+  color: var(--text-muted);
+  opacity: 1;
+}
+
+.daymark-calendar-weekdays,
+.daymark-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  margin-inline: auto;
+  max-width: 420px;
+  min-width: 0;
+  width: 100%;
+}
+
+.daymark-calendar-weekdays {
+  color: var(--text-muted);
+  font-size: var(--font-adaptive-smallest, var(--font-ui-smaller));
+  font-weight: var(--font-medium);
+  letter-spacing: 0.075em;
+  text-align: center;
+}
+
+.daymark-calendar-weekdays span {
+  padding: 2px 0 4px;
+}
+
+.daymark-calendar-grid {
+  gap: 2px;
+}
+
+.daymark-calendar-view .daymark-calendar-day {
+  aspect-ratio: 1;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-s);
+  box-shadow: none;
+  color: var(--text-normal);
+  display: grid;
+  font-size: calc(var(--font-adaptive-smaller, var(--font-ui-small)) + 5%);
+  font-family: var(--font-interface);
+  height: auto;
+  isolation: isolate;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  outline: none;
+  padding: 0;
+  place-items: center;
+  position: relative;
+  text-align: center;
+  width: 100%;
+}
+
+.daymark-calendar-view .daymark-calendar-day:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.daymark-calendar-view .daymark-calendar-day.is-highlighted:not(.has-cover):not(.is-selected) {
+  background: var(--background-modifier-hover);
+}
+
+.daymark-calendar-view .daymark-calendar-day.has-note:not(.has-cover):not(.is-selected) {
+  background: color-mix(in srgb, var(--interactive-accent) 14%, transparent);
+}
+
+.daymark-calendar-view .daymark-calendar-day.is-selected {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+.daymark-calendar-view .daymark-calendar-day.is-selected:hover {
+  background: var(--interactive-accent-hover);
+  color: var(--text-on-accent);
+}
+
+.daymark-calendar-view .daymark-calendar-day.is-outside-month {
+  color: var(--text-faint);
+  opacity: 1;
+}
+
+.daymark-calendar-view .daymark-calendar-day:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--interactive-accent);
+}
+
+.daymark-calendar-day-number {
+  display: block;
+  font-size: inherit;
+  font-variant-numeric: tabular-nums;
+  line-height: normal;
+  position: relative;
+  z-index: 2;
+}
+
+.daymark-calendar-day.is-today .daymark-calendar-day-number {
+  color: var(--text-accent);
+  font-weight: var(--font-semibold);
+}
+
+.daymark-calendar-day.is-selected .daymark-calendar-day-number {
+  color: var(--text-on-accent);
+}
+
+.daymark-calendar-day-cover {
+  height: 100%;
+  inset: 0;
+  object-fit: cover;
+  position: absolute;
+  transition: opacity 120ms ease;
+  width: 100%;
+  z-index: 0;
+}
+
+.daymark-calendar-day.has-cover::after {
+  background: rgb(0 0 0 / 22%);
+  content: "";
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: 1;
+}
+
+.daymark-calendar-day.has-cover.is-selected::before {
+  box-shadow: inset 0 0 0 2px var(--interactive-accent);
+  content: "";
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: 3;
+}
+
+.daymark-calendar-day.has-cover .daymark-calendar-day-number {
+  color: white;
+  font-weight: 600;
+  text-shadow: 0 1px 3px rgb(0 0 0 / 70%);
+}
+
+.daymark-calendar-day.has-cover:hover .daymark-calendar-day-cover {
+  opacity: 0.88;
+}
+
+.daymark-calendar-day.is-outside-month.has-cover .daymark-calendar-day-cover {
+  opacity: 0.35;
+}
+
+.daymark-week-list {
+  display: grid;
+  gap: 1px;
+  margin: var(--size-4-1) auto;
+  max-width: 520px;
+  width: calc(100% - var(--size-4-2));
+}
+
+.daymark-calendar-view .daymark-week-row {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-s);
+  box-shadow: none;
+  color: var(--text-normal);
+  display: grid;
+  font-family: var(--font-interface);
+  gap: var(--size-4-2);
+  grid-template-columns: 36px minmax(0, 1fr);
+  min-height: 40px;
+  padding: 2px var(--size-4-1);
+  text-align: left;
+  width: 100%;
+}
+
+.daymark-calendar-view .daymark-week-row:hover {
+  background: var(--background-modifier-hover);
+}
+
+.daymark-calendar-view .daymark-week-row:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--interactive-accent);
+}
+
+.daymark-week-date-tile {
+  align-items: center;
+  background: transparent;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  box-sizing: border-box;
+  display: flex;
+  height: 36px;
+  justify-content: center;
+  isolation: isolate;
+  overflow: hidden;
+  position: relative;
+  width: 36px;
+}
+
+.daymark-week-row.is-highlighted .daymark-week-date-tile {
+  background: var(--background-modifier-hover);
+}
+
+.daymark-week-row.has-note:not(.has-cover) .daymark-week-date-tile {
+  background: color-mix(in srgb, var(--interactive-accent) 14%, transparent);
+  border-color: transparent;
+}
+
+.daymark-week-row.is-selected .daymark-week-date-tile {
+  box-shadow: none;
+}
+
+.daymark-week-row.is-selected .daymark-week-date-tile::before {
+  box-shadow: inset 0 0 0 2px var(--interactive-accent);
+  content: "";
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: 3;
+}
+
+.daymark-week-date-number {
+  font-size: var(--font-ui-small);
+  font-variant-numeric: tabular-nums;
+  position: relative;
+  z-index: 2;
+}
+
+.daymark-week-row.is-today:not(.has-cover) .daymark-week-date-number {
+  color: var(--text-accent);
+  font-weight: var(--font-semibold);
+}
+
+.daymark-week-date-cover {
+  height: 100%;
+  inset: 0;
+  object-fit: cover;
+  position: absolute;
+  width: 100%;
+  z-index: 0;
+}
+
+.daymark-week-row.has-cover .daymark-week-date-tile::after {
+  background: rgb(0 0 0 / 24%);
+  content: "";
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: 1;
+}
+
+.daymark-week-row.has-cover .daymark-week-date-number {
+  color: white;
+  font-weight: var(--font-semibold);
+  text-shadow: 0 1px 3px rgb(0 0 0 / 70%);
+}
+
+.daymark-week-details {
+  align-items: center;
+  display: grid;
+  gap: var(--size-4-2);
+  grid-template-columns: minmax(0, 1fr) auto;
+  min-width: 0;
+}
+
+.daymark-week-weekday {
+  font-size: var(--font-adaptive-smaller, var(--font-ui-small));
+  font-weight: var(--font-medium);
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.daymark-week-weekday-short {
+  display: none;
+}
+
+.daymark-week-row.is-selected .daymark-week-weekday {
+  font-weight: var(--font-semibold);
+}
+
+.daymark-week-metrics {
+  align-items: flex-end;
+  color: var(--text-muted);
+  display: flex;
+  flex-direction: column;
+  font-size: var(--font-adaptive-smallest, var(--font-ui-smaller));
+  font-variant-numeric: tabular-nums;
+  justify-self: end;
+  line-height: 1.2;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.daymark-week-metrics > span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.daymark-week-metrics.is-empty {
+  color: var(--text-faint);
+}
+
+.daymark-visually-hidden {
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  height: 1px;
+  overflow: hidden;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
+}
+
+.daymark-calendar-footer {
+  align-items: center;
+  background: transparent;
+  border-top: 1px solid var(--background-modifier-border);
+  box-sizing: border-box;
+  display: grid;
+  flex: 0 0 44px;
+  gap: var(--size-4-2);
+  grid-template-columns: minmax(0, 1fr) auto;
+  height: 44px;
+  margin: 0 var(--size-4-1);
+  min-height: 44px;
+  padding: var(--size-4-1) 0;
+  position: relative;
+  z-index: 4;
+}
+
+.daymark-calendar-footer.is-stats-hidden {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.daymark-calendar-footer.is-stats-hidden .daymark-calendar-tally {
+  grid-column: 2;
+}
+
+.daymark-calendar-footer.is-tally-hidden {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.daymark-calendar-selected-stats {
+  align-items: center;
+  color: var(--text-muted);
+  display: flex;
+  font-size: var(--font-adaptive-smaller, var(--font-ui-small));
+  font-variant-numeric: tabular-nums;
+  height: var(--daymark-control-size);
+  line-height: 1.2;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.daymark-calendar-view .daymark-calendar-tally {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-s);
+  box-shadow: none;
+  color: var(--text-muted);
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-family: var(--font-interface);
+  font-size: var(--font-adaptive-smaller, var(--font-ui-small));
+  font-weight: var(--font-semibold);
+  gap: 6px;
+  height: var(--daymark-control-size);
+  letter-spacing: 0.05em;
+  line-height: 1.2;
+  min-height: var(--daymark-control-size);
+  padding: 0 8px;
+  text-transform: uppercase;
+}
+
+.daymark-calendar-view .daymark-calendar-tally:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.daymark-calendar-tally-icon,
+.daymark-calendar-tally-icon svg {
+  display: block;
+  height: calc(var(--daymark-control-icon-size) - 2px);
+  width: calc(var(--daymark-control-icon-size) - 2px);
+}
+
+.daymark-calendar-status,
+.daymark-calendar-error {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  margin: 0;
+  padding: var(--size-4-3);
+  text-align: center;
+}
+
+.daymark-calendar-error {
+  color: var(--text-error);
+}
+
+.daymark-create-note-modal {
+  max-width: min(480px, calc(100vw - var(--size-4-8)));
+}
+
+.daymark-create-note-prompt {
+  line-height: var(--line-height-normal);
+  margin: 0 0 var(--size-4-3);
+}
+
+.daymark-create-note-path {
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  box-sizing: border-box;
+  color: var(--text-muted);
+  display: block;
+  overflow-wrap: anywhere;
+  padding: var(--size-4-2) var(--size-4-3);
+  width: 100%;
+}
+
+.daymark-create-note-actions {
+  display: flex;
+  gap: var(--size-4-2);
+  justify-content: flex-end;
+  margin-top: var(--size-4-5);
+}
+
+.tally-view {
+  --daymark-control-icon-size: 16px;
+  --daymark-control-size: 30px;
+  box-sizing: border-box;
+  color: var(--text-normal);
+  container-name: daymark-sidebar;
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-interface);
+  font-size: var(--font-adaptive-smaller, var(--font-ui-small));
+  height: 100%;
+  min-height: 100%;
+  min-width: 0;
+  overflow: hidden;
+  padding: 0 var(--size-4-3) var(--size-4-3);
+  width: 100%;
+}
+
+.tally-metric {
+  align-items: center;
+  display: flex;
+}
+
+.tally-view .tally-mode-toggle,
+.tally-view .tally-nav-button,
+.tally-view .tally-current-period-button,
+.tally-view .tally-header-save {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-s);
+  box-shadow: none;
+  display: inline-flex;
+  height: var(--daymark-control-size);
+  justify-content: center;
+  min-height: var(--daymark-control-size);
+  padding: 0;
+  width: var(--daymark-control-size);
+}
+
+.tally-mode-toggle svg,
+.tally-nav-button svg,
+.tally-current-period-button svg,
+.tally-header-save svg {
+  height: var(--daymark-control-icon-size);
+  width: var(--daymark-control-icon-size);
+}
+
+.tally-view .tally-mode-toggle {
+  margin-right: 0;
+}
+
+.tally-view .tally-mode-toggle:hover,
+.tally-view .tally-nav-button:hover,
+.tally-view .tally-current-period-button:hover:not(:disabled),
+.tally-view .tally-header-save:hover:not(:disabled) {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.tally-view .tally-current-period-button:disabled {
+  color: var(--text-faint);
+  cursor: default;
+  opacity: 0.45;
+}
+
+.tally-view .tally-header-save {
+  margin-left: 0;
+}
+
+.tally-view .tally-header-save.is-saved:disabled {
+  color: var(--text-muted);
+  cursor: default;
+  opacity: 1;
+}
+
+.tally-header {
+  align-items: center;
+  display: flex;
+  margin: 0 var(--size-4-1) var(--size-4-3);
+  max-width: 100%;
+  min-height: var(--daymark-control-size);
+  min-width: 0;
+}
+
+.tally-header-controls {
+  align-items: center;
+  display: flex;
+  flex: 0 0 auto;
+  gap: 2px;
+  margin-left: auto;
+}
+
+.tally-period-title {
+  align-items: center;
+  color: var(--text-normal);
+  display: inline-flex;
+  flex: 1 1 auto;
+  font-family: var(--font-interface);
+  font-size: calc(var(--font-adaptive-small, var(--font-ui-medium)) + 2px);
+  font-weight: var(--font-semibold);
+  gap: 6px;
+  letter-spacing: 0.04em;
+  line-height: 1.25;
+  min-width: 0;
+  overflow: hidden;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.tally-period-title > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tally-summary {
+  align-content: start;
+  border-top: 1px solid var(--background-modifier-border);
+  display: grid;
+  flex: 1 1 auto;
+  gap: 1px;
+  min-width: 0;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--size-4-1) 0;
+}
+
+.tally-metric {
+  background: transparent;
+  border-bottom: 0;
+  border-radius: var(--radius-s);
+  font-family: var(--font-interface);
+  font-size: var(--font-adaptive-smaller, var(--font-ui-small));
+  gap: var(--size-4-2);
+  min-height: 40px;
+  padding: 2px var(--size-4-2);
+}
+
+.tally-metric-label {
+  flex: 1;
+  font-weight: var(--font-medium);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tally-metric-value {
+  color: var(--text-muted);
+  font-size: var(--font-adaptive-smallest, var(--font-ui-smaller));
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--font-normal);
+  letter-spacing: 0;
+  text-align: right;
+}
+
+.tally-additional-word-source {
+  border-top: 1px solid var(--background-modifier-border);
+  display: grid;
+  gap: 1px;
+  margin-top: var(--size-4-2);
+  min-width: 0;
+  padding-top: var(--size-4-2);
+}
+
+.tally-additional-word-source-title {
+  align-items: center;
+  color: var(--text-muted);
+  display: flex;
+  font-size: var(--font-adaptive-smallest, var(--font-ui-smaller));
+  font-weight: var(--font-semibold);
+  letter-spacing: 0.055em;
+  min-height: 28px;
+  min-width: 0;
+  overflow: hidden;
+  padding: 0 var(--size-4-2);
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.tally-status,
+.tally-empty,
+.tally-error {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  margin: 0;
+  padding: var(--size-4-3) var(--size-4-2);
+  text-align: center;
+}
+
+.tally-empty {
+  border-bottom: 0;
+}
+
+.tally-error {
+  color: var(--text-error);
+}
+
+.daymark-settings-intro {
+  line-height: var(--line-height-normal);
+  margin-bottom: var(--size-4-6);
+  max-width: 68ch;
+}
+
+.daymark-settings-section {
+  margin: 0 0 var(--size-4-8);
+}
+
+.daymark-settings-section-title {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  font-weight: var(--font-semibold);
+  letter-spacing: 0.06em;
+  margin: 0 0 var(--size-4-1);
+  text-transform: uppercase;
+}
+
+.daymark-settings-section-description {
+  line-height: var(--line-height-normal);
+  margin: 0 0 var(--size-4-3);
+  max-width: 68ch;
+}
+
+.daymark-settings-card {
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-l);
+  overflow: hidden;
+  padding: 0 var(--size-4-4);
+}
+
+.daymark-settings-card > .setting-item {
+  padding: var(--size-4-4) var(--size-4-1);
+}
+
+.daymark-settings-card .setting-item-description {
+  line-height: var(--line-height-normal);
+  max-width: 58ch;
+}
+
+.daymark-settings-card input[type="text"] {
+  max-width: 100%;
+  width: clamp(220px, 32vw, 320px);
+}
+
+.daymark-settings-card select {
+  max-width: 100%;
+}
+
+.daymark-settings-card > .setting-item:first-child {
+  border-top: 0;
+}
+
+.daymark-weekday-toggles {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(7, 30px);
+}
+
+.daymark-settings-card .daymark-weekday-button {
+  background: transparent;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  box-shadow: none;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  font-weight: var(--font-medium);
+  height: 30px;
+  min-height: 30px;
+  padding: 0;
+  width: 30px;
+}
+
+.daymark-settings-card .daymark-weekday-button:hover {
+  background: var(--background-modifier-hover);
+  border-color: var(--background-modifier-border-hover);
+  color: var(--text-normal);
+}
+
+.daymark-settings-card .daymark-weekday-button.is-active {
+  background: var(--interactive-accent);
+  border-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+.daymark-settings-card .daymark-weekday-button:focus-visible {
+  box-shadow: 0 0 0 2px var(--background-modifier-border-focus);
+}
+
+@container daymark-sidebar (max-width: 320px) {
+  .daymark-calendar-header,
+  .tally-header {
+    margin-left: 0;
+    margin-right: 0;
+  }
+
+  .daymark-calendar-header-controls,
+  .tally-header-controls {
+    gap: 0;
+  }
+
+  .daymark-calendar-view .daymark-calendar-mode-toggle {
+    margin-right: 0;
+  }
+
+  .daymark-calendar-title,
+  .tally-period-title {
+    font-size: calc(var(--font-adaptive-smaller, var(--font-ui-small)) + 2px);
+    letter-spacing: 0.035em;
+  }
+
+  .daymark-calendar-weekdays {
+    letter-spacing: 0.07em;
+  }
+
+  .daymark-week-details,
+  .daymark-calendar-footer {
+    gap: var(--size-4-1);
+  }
+
+  .tally-metric {
+    padding-left: var(--size-4-1);
+    padding-right: var(--size-4-1);
+  }
+
+  .tally-additional-word-source-title {
+    padding-left: var(--size-4-1);
+    padding-right: var(--size-4-1);
+  }
+}
+
+@container daymark-sidebar (max-width: 285px) {
+  .daymark-calendar-view .daymark-calendar-mode-toggle,
+  .daymark-calendar-view .daymark-calendar-nav,
+  .daymark-calendar-view .daymark-calendar-today,
+  .tally-view .tally-mode-toggle,
+  .tally-view .tally-nav-button,
+  .tally-view .tally-current-period-button,
+  .tally-view .tally-header-save {
+    height: 28px;
+    min-height: 28px;
+    width: 28px;
+  }
+
+  .daymark-calendar-view .daymark-calendar-today {
+    padding: 0;
+  }
+
+  .daymark-calendar-today-icon {
+    display: inline-flex;
+  }
+
+  .daymark-calendar-today-label {
+    display: none;
+  }
+
+  .daymark-calendar-weekdays {
+    font-size: calc(var(--font-adaptive-smallest, var(--font-ui-smaller)) - 1px);
+    letter-spacing: 0.04em;
+  }
+
+  .daymark-calendar-view .daymark-week-row {
+    gap: var(--size-4-1);
+    grid-template-columns: 34px minmax(0, 1fr);
+    padding-left: 2px;
+    padding-right: 2px;
+  }
+
+  .daymark-week-date-tile {
+    height: 34px;
+    width: 34px;
+  }
+
+  .daymark-week-weekday-long {
+    display: none;
+  }
+
+  .daymark-week-weekday-short {
+    display: inline;
+  }
+
+  .daymark-calendar-selected-stats {
+    font-size: var(--font-adaptive-smallest, var(--font-ui-smaller));
+  }
+
+  .daymark-calendar-view .daymark-calendar-tally {
+    gap: 0;
+    padding: 0;
+    width: 28px;
+  }
+
+  .daymark-calendar-tally-label {
+    display: none;
+  }
+}
+
+@media (max-width: 700px) {
+  .daymark-settings-intro {
+    margin-bottom: var(--size-4-4);
+  }
+
+  .daymark-settings-section {
+    margin-bottom: var(--size-4-6);
+  }
+
+  .daymark-settings-card {
+    border-radius: var(--radius-m);
+    padding: 0 var(--size-4-2);
+  }
+
+  .daymark-settings-card > .setting-item {
+    align-items: stretch;
+    flex-direction: column;
+    gap: var(--size-4-3);
+    padding-left: var(--size-4-1);
+    padding-right: var(--size-4-1);
+  }
+
+  .daymark-settings-card .setting-item-control {
+    justify-content: flex-start;
+    width: 100%;
+  }
+
+  .daymark-settings-card input[type="text"] {
+    width: 100%;
+  }
+
+  .daymark-highlight-days-setting {
+    gap: 0;
+  }
+
+  .daymark-highlight-days-setting .setting-item-control {
+    justify-content: stretch;
+    padding-top: var(--size-4-3);
+    width: 100%;
+  }
+
+  .daymark-weekday-toggles {
+    grid-template-columns: repeat(7, minmax(30px, 1fr));
+    width: 100%;
+  }
+
+  .daymark-settings-card .daymark-weekday-button {
+    width: 100%;
+  }
+}
+
+.daymark-setting-preview {
+  margin-top: 4px;
+}
+
+.daymark-setting-preview-value {
+  color: var(--text-accent);
+}
+
+.daymark-setting-preview-invalid,
+.daymark-setting-error {
+  color: var(--text-error);
+}
+
+.daymark-setting-invalid {
+  border-color: var(--text-error) !important;
+}
+
+.tally-view button:focus-visible {
+  box-shadow: none;
+  outline: 1px solid var(--interactive-accent);
+  outline-offset: -1px;
+}
+
+.daymark-calendar-view button:focus-visible {
+  box-shadow: none;
+  outline: 1px solid var(--interactive-accent);
+  outline-offset: -1px;
+}
+  display: inline-flex;
