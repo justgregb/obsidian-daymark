@@ -87,22 +87,32 @@ Use **Daymark: Rebuild index** only for manual recovery. **Daymark: Save current
 
 ## Installation
 
-Copy `manifest.json`, `main.js`, and `styles.css` into:
+### Install a release manually
+
+1. Download `manifest.json`, `main.js`, and `styles.css` from the [latest release](https://github.com/justgregb/obsidian-daymark/releases/latest).
+2. Create this folder inside your vault if it does not already exist:
 
 ```text
 <vault>/.obsidian/plugins/daymark/
 ```
 
-Reload Obsidian, then enable **Daymark** under **Settings → Community plugins**.
+3. Copy the three downloaded files into that folder.
+4. Reload Obsidian, then enable **Daymark** under **Settings → Community plugins**.
 
 ### Build from source
 
+Building Daymark requires Git and Node.js.
+
 ```sh
-npm install
+git clone https://github.com/justgregb/obsidian-daymark.git
+cd obsidian-daymark
+npm ci
 npm run build
 npm test
 npm run lint
 ```
+
+After the build succeeds, copy `main.js`, `manifest.json`, and `styles.css` into `<vault>/.obsidian/plugins/daymark/`. Reload Obsidian, then enable **Daymark** under **Settings → Community plugins**.
 
 ## Privacy and safety
 
