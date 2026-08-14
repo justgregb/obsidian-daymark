@@ -22,8 +22,8 @@ describe("period drill-down", () => {
       source("2026-02-01", 40)
     ], "year", bounds, 1, "en-US");
     expect(rows.map(({ label, value }) => ({ label, value }))).toEqual([
-      { label: "Feb", value: 40 },
-      { label: "Jan", value: 30 }
+      { label: "Jan", value: 30 },
+      { label: "Feb", value: 40 }
     ]);
     expect(rows.every((row) => row.path === null)).toBe(true);
   });
@@ -36,8 +36,8 @@ describe("period drill-down", () => {
       source("2026-08-03", 40)
     ], "month", bounds, 1, "en-US");
     expect(rows.map(({ label, value }) => ({ label, value }))).toEqual([
-      { label: "Aug 3–9", value: 40 },
-      { label: "Aug 1–2", value: 30 }
+      { label: "Aug 1–2", value: 30 },
+      { label: "Aug 3–9", value: 40 }
     ]);
   });
 
@@ -49,10 +49,10 @@ describe("period drill-down", () => {
       source("2026-08-12", 30, 8)
     ], "week", bounds, 1, "en-US");
     expect(rows.map(({ label, value }) => ({ label, value }))).toEqual([
-      { label: "Wed, Aug 12", value: 50 },
-      { label: "Mon, Aug 10", value: 10 }
+      { label: "Mon, Aug 10", value: 10 },
+      { label: "Wed, Aug 12", value: 50 }
     ]);
-    expect(rows[0]?.path).toContain("2026-08-12.md");
-    expect(rows[0]?.line).toBe(5);
+    expect(rows[1]?.path).toContain("2026-08-12.md");
+    expect(rows[1]?.line).toBe(5);
   });
 });

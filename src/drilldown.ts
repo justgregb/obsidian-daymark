@@ -72,5 +72,5 @@ export function buildBreakdownRows(
     }
   }
 
-  return [...rows.values()].sort((left, right) => right.key.localeCompare(left.key));
+  return [...rows.values()].sort((left, right) => left.key.localeCompare(right.key));
 }

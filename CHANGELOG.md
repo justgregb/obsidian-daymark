@@ -2,6 +2,7 @@
 
 ## 0.1.0 — 2026-08-12
 
+- Redesigned saved Tally reports with a natural at-a-glance summary, coverage and checked progress, a linked writing highlight, chronological Days/Weeks/Months tables, and sparse per-period tallies without repeated zeroes; added an invisible version marker while preserving legacy report recognition and overwrite protection.
 - Reused bounded locale formatters, Unicode word segmenters, and immutable report descriptors across renders, index rebuilds, settings, report-state checks, and saves; additional-folder totals now update in constant time instead of being re-summed for every Tally render.
 - Removed redundant collapsed-footer CSS while preserving the established Tally-left and Report-right layout.
 - Fixed Report alignment in expanded Tally so the action reaches the right edge instead of being pulled toward the middle by its shared button styling.

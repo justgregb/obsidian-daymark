@@ -54,7 +54,7 @@ For example:
 - [x] Greek lesson #greek
 ```
 
-This adds `30` to Pushups and `1` to Greek. Select **Save** to create a Markdown report with a useful period breakdown. Daymark will not overwrite an ordinary note that happens to share a report filename.
+This adds `30` to Pushups and `1` to Greek. Select **Save** to create a clean Markdown report with an at-a-glance summary and a chronological Days, Weeks, or Months table. Daymark will not overwrite an ordinary note that happens to share a report filename.
 
 You can also choose one additional writing folder for a separate, all-time word count. It never changes journal totals or saved reports.
 
