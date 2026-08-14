@@ -8,12 +8,11 @@ There are no accounts, analytics, or network requests. Your journal stays in ord
 
 Open Daymark from the ribbon or run **Daymark: Open Daymark**.
 
-- Switch between Week, Month, and Year without losing your selected date.
-- See daily-note activity, today, and the currently open note at a glance.
-- Use the first local image in a note as its optional calendar cover.
-- Choose your first weekday and softly shade recurring days such as weekends.
-- Open existing notes immediately or confirm before creating a missing one.
-- Move through dates and months with the keyboard.
+- Switch between Week, Month, and Year.
+- See which days already have notes, with optional image covers.
+- Use the arrow buttons or **Today** to move around the calendar.
+- Click a date to open its note. If it does not exist, Daymark asks before creating it.
+- Choose the first day of the week and softly shade recurring days such as weekends.
 
 Year view brings all twelve months together in a compact activity overview. Select a month to open it at full size.
 
