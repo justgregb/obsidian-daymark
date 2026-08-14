@@ -1,4 +1,5 @@
 import type { App, TFile } from "obsidian";
+import { toIsoDate } from "./date";
 import { dateFromDailyNotePath } from "./discovery";
 import { parseObsidianDateFormat } from "./obsidian-date";
 import { parseDailyNote } from "./parser";
@@ -21,7 +22,7 @@ export class DaymarkIndex {
   }
 
   recordForDate(date: PlainDate): DailyRecord | null {
-    return this.store.getByIsoDate(`${String(date.year).padStart(4, "0")}-${String(date.month).padStart(2, "0")}-${String(date.day).padStart(2, "0")}`);
+    return this.store.getByIsoDate(toIsoDate(date));
   }
 
   async ensureReady(): Promise<void> {

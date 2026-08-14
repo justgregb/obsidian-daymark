@@ -1,6 +1,6 @@
 import { periodDayCount } from "./calendar-summary";
 import { addDays, formatBreakdownDay, toIsoDate } from "./date";
-import { buildBreakdownRows, type BreakdownSource } from "./drilldown";
+import { buildBreakdownRows, sumBreakdownValues, type BreakdownSource } from "./drilldown";
 import { formatTagLabel } from "./format";
 import { numberFormatter } from "./intl-cache";
 import type { PeriodAggregate, PeriodMode, Weekday } from "./types";
@@ -15,6 +15,16 @@ export interface SavedSummaryDescriptor {
 }
 
 export type SavedSummaryState = "save" | "saved" | "update";
+
+const REPORT_PERIOD_COPY: Record<PeriodMode, {
+  heading: string;
+  column: string;
+  tallyHeading: string;
+}> = {
+  week: { heading: "Days", column: "Day", tallyHeading: "Tallies by day" },
+  month: { heading: "Weeks", column: "Week", tallyHeading: "Tallies by week" },
+  year: { heading: "Months", column: "Month", tallyHeading: "Tallies by month" }
+};
 
 function normalizeVaultPath(value: string): string {
   return value.trim().replace(/\\/gu, "/").replace(/\/{2,}/gu, "/").replace(/^\/+|\/+$/gu, "");
@@ -89,35 +99,6 @@ function breakdownLabel(label: string, path: string | null, tableCell = false): 
   return `[[${path.replace(/\.md$/u, "")}${separator}${label}]]`;
 }
 
-function breakdownValues(
-  sources: BreakdownSource[],
-  mode: PeriodMode,
-  aggregate: PeriodAggregate,
-  weekStart: Weekday,
-  locale: string | undefined
-): Map<string, number> {
-  const rows = buildBreakdownRows(sources, mode, aggregate.bounds, weekStart, locale);
-  return new Map(rows.map((row) => [row.key, row.value]));
-}
-
-function periodHeading(mode: PeriodMode): string {
-  if (mode === "week") return "Days";
-  if (mode === "month") return "Weeks";
-  return "Months";
-}
-
-function periodColumn(mode: PeriodMode): string {
-  if (mode === "week") return "Day";
-  if (mode === "month") return "Week";
-  return "Month";
-}
-
-function tallyBreakdownHeading(mode: PeriodMode): string {
-  if (mode === "week") return "Tallies by day";
-  if (mode === "month") return "Tallies by week";
-  return "Tallies by month";
-}
-
 export function createSavedSummaryDescriptor(
   journalFolder: string,
   mode: PeriodMode,
@@ -129,6 +110,12 @@ export function createSavedSummaryDescriptor(
   const filename = `Tally — ${summaryKey(mode, aggregate)}.md`;
   const number = numberFormatter(locale, { maximumFractionDigits: 3 });
   const formatNumber = (value: number) => number.format(value);
+  const periodCopy = REPORT_PERIOD_COPY[mode];
+  const tagged = aggregate.tags.map((tag) => ({
+    label: formatTagLabel(tag.tag, locale),
+    total: tag.total,
+    values: sumBreakdownValues(tag.sources, mode, weekStart)
+  }));
   const overview = [
     `**${formatNumber(aggregate.noteCount)} of ${formatNumber(periodDayCount(aggregate.bounds))} days**`,
     `**${formatNumber(aggregate.words)} ${aggregate.words === 1 ? "word" : "words"}**`
@@ -139,9 +126,9 @@ export function createSavedSummaryDescriptor(
     );
   }
   const lines = ["## At a glance", "", overview.join(" · ")];
-  if (aggregate.tags.length > 0) {
-    const tallies = aggregate.tags
-      .map((tag) => `${formatTagLabel(tag.tag, locale)} ${formatNumber(tag.total)}`)
+  if (tagged.length > 0) {
+    const tallies = tagged
+      .map((tag) => `${tag.label} ${formatNumber(tag.total)}`)
       .join(" · ");
     lines.push("", `**Tallies:** ${tallies}`);
   }
@@ -161,15 +148,11 @@ export function createSavedSummaryDescriptor(
     weekStart,
     locale
   );
-  const words = breakdownValues(aggregate.wordSources, mode, aggregate, weekStart, locale);
-  const checked = breakdownValues(aggregate.checkboxSources, mode, aggregate, weekStart, locale);
-  const tagged = aggregate.tags.map((tag) => ({
-    label: formatTagLabel(tag.tag, locale),
-    values: breakdownValues(tag.sources, mode, aggregate, weekStart, locale)
-  }));
+  const words = sumBreakdownValues(aggregate.wordSources, mode, weekStart);
+  const checked = sumBreakdownValues(aggregate.checkboxSources, mode, weekStart);
   if (periods.length > 0) {
     const includeChecked = aggregate.totalCheckboxes > 0;
-    const header = [periodColumn(mode), "Daily notes", "Words"];
+    const header = [periodCopy.column, "Daily notes", "Words"];
     const alignment = ["---", "---:", "---:"];
     if (includeChecked) {
       header.push("Checked items");
@@ -177,7 +160,7 @@ export function createSavedSummaryDescriptor(
     }
     lines.push(
       "",
-      `## ${periodHeading(mode)}`,
+      `## ${periodCopy.heading}`,
       "",
       `| ${header.join(" | ")} |`,
       `| ${alignment.join(" | ")} |`
@@ -193,11 +176,11 @@ export function createSavedSummaryDescriptor(
     }
     const tallyColumns = tagged.filter((tag) => tag.values.size > 0);
     if (tallyColumns.length > 0) {
-      const tallyHeader = [periodColumn(mode), ...tallyColumns.map((tag) => tag.label)];
+      const tallyHeader = [periodCopy.column, ...tallyColumns.map((tag) => tag.label)];
       const tallyAlignment = ["---", ...tallyColumns.map(() => "---:")];
       lines.push(
         "",
-        `## ${tallyBreakdownHeading(mode)}`,
+        `## ${periodCopy.tallyHeading}`,
         "",
         `| ${tallyHeader.join(" | ")} |`,
         `| ${tallyAlignment.join(" | ")} |`

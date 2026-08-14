@@ -24,12 +24,48 @@ export interface BreakdownRow {
   line: number | null;
 }
 
+type BreakdownPeriod =
+  | { mode: "year"; key: string }
+  | { mode: "month"; key: string; week: PeriodBounds }
+  | { mode: "week"; key: string };
+
 function laterDate(left: PlainDate, right: PlainDate): PlainDate {
   return compareDates(left, right) >= 0 ? left : right;
 }
 
 function earlierDate(left: PlainDate, right: PlainDate): PlainDate {
   return compareDates(left, right) <= 0 ? left : right;
+}
+
+function breakdownPeriod(
+  source: Pick<BreakdownSource, "date" | "isoDate">,
+  mode: PeriodMode,
+  weekStart: Weekday
+): BreakdownPeriod {
+  if (mode === "year") {
+    return {
+      mode,
+      key: toIsoDate({ year: source.date.year, month: source.date.month, day: 1 })
+    };
+  }
+  if (mode === "month") {
+    const week = getPeriodBounds(source.date, "week", weekStart);
+    return { mode, key: toIsoDate(week.start), week };
+  }
+  return { mode, key: source.isoDate };
+}
+
+export function sumBreakdownValues(
+  sources: BreakdownSource[],
+  mode: PeriodMode,
+  weekStart: Weekday
+): Map<string, number> {
+  const values = new Map<string, number>();
+  for (const source of sources) {
+    const { key } = breakdownPeriod(source, mode, weekStart);
+    values.set(key, (values.get(key) ?? 0) + source.value);
+  }
+  return values;
 }
 
 export function buildBreakdownRows(
@@ -42,23 +78,21 @@ export function buildBreakdownRows(
   const rows = new Map<string, BreakdownRow>();
 
   for (const source of sources) {
-    let key: string;
+    const period = breakdownPeriod(source, mode, weekStart);
+    const key = period.key;
     let label: string;
     let path: string | null = null;
     let line: number | null = null;
 
-    if (mode === "year") {
+    if (period.mode === "year") {
       const month = { year: source.date.year, month: source.date.month, day: 1 };
-      key = toIsoDate(month);
       label = formatBreakdownMonth(month, locale);
-    } else if (mode === "month") {
-      const week = getPeriodBounds(source.date, "week", weekStart);
+    } else if (period.mode === "month") {
+      const week = period.week;
       const start = laterDate(week.start, parentBounds.start);
       const end = earlierDate(week.end, parentBounds.end);
-      key = toIsoDate(week.start);
       label = formatBreakdownRange(start, end, locale);
     } else {
-      key = source.isoDate;
       label = formatBreakdownDay(source.date, locale);
       path = source.path;
       line = source.line ?? null;

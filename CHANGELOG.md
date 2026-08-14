@@ -2,6 +2,7 @@
 
 ## 0.1.0 — 2026-08-12
 
+- Reduced repeated report grouping and Year-view activity passes, reused shared date formatting, and simplified report mode metadata without changing rendered reports or Calendar behavior.
 - Redesigned saved Tally reports with a natural at-a-glance summary, coverage and checked progress, a linked writing highlight, chronological Days/Weeks/Months activity and Tally tables, and clear dashes instead of invented zeroes; added an invisible version marker while preserving explicit zero values, legacy report recognition, and overwrite protection.
 - Reused bounded locale formatters, Unicode word segmenters, and immutable report descriptors across renders, index rebuilds, settings, report-state checks, and saves; additional-folder totals now update in constant time instead of being re-summed for every Tally render.
 - Removed redundant collapsed-footer CSS while preserving the established Tally-left and Report-right layout.

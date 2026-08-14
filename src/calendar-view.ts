@@ -300,21 +300,29 @@ export class DaymarkCalendarView extends ItemView {
     const section = parent.createDiv("daymark-year-section");
     const months = section.createDiv("daymark-year-months");
     const aggregate = this.plugin.index.aggregate(getPeriodBounds({ year, month: 1, day: 1 }, "year", weekStart));
-    const wordsByDate = new Map(aggregate.wordSources.map((source) => [source.isoDate, source.value]));
-    const busiestDayWords = Math.max(0, ...aggregate.wordSources.map((source) => source.value));
+    const wordsByDate = new Map<string, number>();
+    let busiestDayWords = 0;
+    for (const source of aggregate.wordSources) {
+      wordsByDate.set(source.isoDate, source.value);
+      busiestDayWords = Math.max(busiestDayWords, source.value);
+    }
     for (let month = 1; month <= 12; month += 1) {
       const first = { year, month, day: 1 };
       const dates = calendarYearActivityDates(first, weekStart);
+      let noteCount = 0;
+      let wordCount = 0;
       const activityDates = dates.map((date) => {
         const isoDate = date ? toIsoDate(date) : null;
+        const hasNote = date ? this.plugin.index.recordForDate(date) !== null : false;
+        const words = isoDate ? wordsByDate.get(isoDate) ?? 0 : 0;
+        if (hasNote) noteCount += 1;
+        wordCount += words;
         return {
           date,
-          hasNote: date ? this.plugin.index.recordForDate(date) !== null : false,
-          words: isoDate ? wordsByDate.get(isoDate) ?? 0 : 0
+          hasNote,
+          words
         };
       });
-      const noteCount = activityDates.reduce((total, entry) => total + (entry.hasNote ? 1 : 0), 0);
-      const wordCount = activityDates.reduce((total, entry) => total + entry.words, 0);
       const monthLabel = this.monthFormatter.format(toDate(first));
       const selectedMonth = this.selectedDate.year === year && this.selectedDate.month === month;
       const button = months.createEl("button", {

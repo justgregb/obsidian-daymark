@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { getPeriodBounds } from "../src/date";
-import { buildBreakdownRows, type BreakdownSource } from "../src/drilldown";
+import { buildBreakdownRows, sumBreakdownValues, type BreakdownSource } from "../src/drilldown";
 
 function source(isoDate: string, value: number, line?: number): BreakdownSource {
   const [year, month, day] = isoDate.split("-").map(Number) as [number, number, number];
@@ -54,5 +54,26 @@ describe("period drill-down", () => {
     ]);
     expect(rows[1]?.path).toContain("2026-08-12.md");
     expect(rows[1]?.line).toBe(5);
+  });
+
+  it("sums values with the same period keys without building display rows", () => {
+    const sources = [
+      source("2026-08-01", 10),
+      source("2026-08-02", 20),
+      source("2026-08-03", 40)
+    ];
+
+    expect([...sumBreakdownValues(sources, "year", 1)]).toEqual([
+      ["2026-08-01", 70]
+    ]);
+    expect([...sumBreakdownValues(sources, "month", 1)]).toEqual([
+      ["2026-07-27", 30],
+      ["2026-08-03", 40]
+    ]);
+    expect([...sumBreakdownValues(sources, "week", 1)]).toEqual([
+      ["2026-08-01", 10],
+      ["2026-08-02", 20],
+      ["2026-08-03", 40]
+    ]);
   });
 });
