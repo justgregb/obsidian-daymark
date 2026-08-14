@@ -58,9 +58,13 @@ export class DaymarkIndex {
   }
 
   private async performRebuild(): Promise<void> {
-    const files = this.app.vault.getMarkdownFiles().filter((file) => this.dateForFile(file) !== null);
-    const parsed = await Promise.all(files.map((file) => this.parseFile(file)));
-    this.store.replace(parsed.filter((record) => record !== null));
+    const candidates: Array<{ file: TFile; date: PlainDate }> = [];
+    for (const file of this.app.vault.getMarkdownFiles()) {
+      const date = this.dateForFile(file);
+      if (date) candidates.push({ file, date });
+    }
+    const parsed = await Promise.all(candidates.map(({ file, date }) => this.parseFile(file, date)));
+    this.store.replace(parsed);
     this.ready = true;
   }
 
@@ -69,8 +73,10 @@ export class DaymarkIndex {
     return dateFromDailyNotePath(file.path, settings.journalFolder, settings.dateFormat, parseObsidianDateFormat);
   }
 
-  private async parseFile(file: TFile) {
-    const date = this.dateForFile(file);
+  private async parseFile(file: TFile, knownDate: PlainDate): Promise<DailyRecord>;
+  private async parseFile(file: TFile): Promise<DailyRecord | null>;
+  private async parseFile(file: TFile, knownDate?: PlainDate): Promise<DailyRecord | null> {
+    const date = knownDate ?? this.dateForFile(file);
     if (!date) return null;
     const content = await this.app.vault.cachedRead(file);
     return parseDailyNote(file.path, file.basename, date, content, this.getLocale());

@@ -119,4 +119,21 @@ describe("incremental store behavior", () => {
     expect(refreshed.words).toBe(25);
     expect(store.aggregate(bounds)).toBe(refreshed);
   });
+
+  it("keeps cached periods when an unrelated date changes", () => {
+    const store = new DaymarkStore();
+    const august = record("2026-08-10", 10, 0);
+    const september = record("2026-09-10", 20, 0);
+    const augustBounds = getPeriodBounds(august.date, "month", 1);
+    store.replace([august, september]);
+
+    const cachedAugust = store.aggregate(augustBounds);
+    store.upsert({ ...september, words: 30 });
+    expect(store.aggregate(augustBounds)).toBe(cachedAugust);
+
+    store.upsert({ ...august, words: 40 });
+    const refreshedAugust = store.aggregate(augustBounds);
+    expect(refreshedAugust).not.toBe(cachedAugust);
+    expect(refreshedAugust.words).toBe(40);
+  });
 });

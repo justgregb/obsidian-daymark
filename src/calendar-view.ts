@@ -185,7 +185,7 @@ export class DaymarkCalendarView extends ItemView {
 
     this.createHeader(root, bounds);
     const body = root.createDiv("daymark-calendar-body");
-    if (this.mode === "year") this.createYearView(body, weekStart);
+    if (this.mode === "year") this.createYearView(body, weekStart, aggregate);
     else if (this.mode === "month") this.createMonthView(body, weekStart);
     else this.createWeekView(body, weekStart);
     this.createFooter(root, aggregate, renderVersion);
@@ -288,18 +288,18 @@ export class DaymarkCalendarView extends ItemView {
     );
   }
 
-  private createYearView(parent: HTMLElement, weekStart: Weekday): void {
-    this.createYearSection(parent, this.displayedMonth.year, weekStart);
+  private createYearView(parent: HTMLElement, weekStart: Weekday, aggregate: PeriodAggregate): void {
+    this.createYearSection(parent, this.displayedMonth.year, weekStart, aggregate);
   }
 
   private createYearSection(
     parent: HTMLElement,
     year: number,
-    weekStart: Weekday
+    weekStart: Weekday,
+    aggregate: PeriodAggregate
   ): void {
     const section = parent.createDiv("daymark-year-section");
     const months = section.createDiv("daymark-year-months");
-    const aggregate = this.plugin.index.aggregate(getPeriodBounds({ year, month: 1, day: 1 }, "year", weekStart));
     const wordsByDate = new Map<string, number>();
     let busiestDayWords = 0;
     for (const source of aggregate.wordSources) {
@@ -319,6 +319,7 @@ export class DaymarkCalendarView extends ItemView {
         wordCount += words;
         return {
           date,
+          isoDate,
           hasNote,
           words
         };
@@ -338,24 +339,24 @@ export class DaymarkCalendarView extends ItemView {
       const activity = button.createSpan("daymark-year-activity");
       activity.setAttr("aria-hidden", "true");
 
-      for (const { date, hasNote, words } of activityDates) {
-        if (!date) {
+      for (let index = 0; index < activityDates.length; index += 1) {
+        const entry = activityDates[index];
+        if (!entry?.date || !entry.isoDate) {
           activity.createSpan("daymark-year-mark is-empty");
           continue;
         }
-        const isoDate = toIsoDate(date);
-        const weekday = toDate(date).getUTCDay() as Weekday;
-        const intensity = yearWritingIntensity(words, busiestDayWords);
+        const weekday = ((weekStart + index) % 7) as Weekday;
+        const intensity = yearWritingIntensity(entry.words, busiestDayWords);
         const classes = [
           "daymark-year-mark",
           this.plugin.settings.highlightedWeekdays.includes(weekday) ? "is-highlighted" : "",
-          hasNote ? "has-note" : "",
+          entry.hasNote ? "has-note" : "",
           intensity ? `has-writing-${intensity}` : "",
-          isoDate === this.renderTodayIso ? "is-today" : "",
-          isoDate === this.renderSelectedIso ? "is-selected" : ""
+          entry.isoDate === this.renderTodayIso ? "is-today" : "",
+          entry.isoDate === this.renderSelectedIso ? "is-selected" : ""
         ].filter(Boolean).join(" ");
         const mark = activity.createSpan(classes);
-        mark.dataset.date = isoDate;
+        mark.dataset.date = entry.isoDate;
       }
 
       button.addEventListener("click", () => {

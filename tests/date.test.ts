@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   addDays,
+  compareDates,
+  dateIsWithin,
   formatPeriodTitle,
   getPeriodBounds,
   isSupportedDateFormat,
@@ -38,6 +40,15 @@ describe("period boundaries", () => {
     expect(toIsoDate(getPeriodBounds(anchor, "month", 1).end)).toBe("2026-09-01");
     expect(toIsoDate(getPeriodBounds(anchor, "year", 1).end)).toBe("2027-01-01");
     expect(toIsoDate(addDays({ year: 2024, month: 2, day: 28 }, 1))).toBe("2024-02-29");
+  });
+
+  it("compares and bounds dates without changing chronological behavior", () => {
+    const bounds = getPeriodBounds(anchor, "month", 1);
+    expect(compareDates({ year: 2025, month: 12, day: 31 }, { year: 2026, month: 1, day: 1 })).toBeLessThan(0);
+    expect(compareDates(anchor, anchor)).toBe(0);
+    expect(compareDates({ year: 2026, month: 10, day: 1 }, { year: 2026, month: 9, day: 30 })).toBeGreaterThan(0);
+    expect(dateIsWithin({ year: 2026, month: 8, day: 1 }, bounds)).toBe(true);
+    expect(dateIsWithin({ year: 2026, month: 9, day: 1 }, bounds)).toBe(false);
   });
 
   it("clamps shifted anchors to valid dates", () => {

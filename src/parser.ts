@@ -110,11 +110,11 @@ export function countWords(value: string, locale?: string): number {
 }
 
 export function countMarkdownProseWords(content: string, locale?: string): number {
-  const prose = markdownContentLines(content)
-    .filter(({ text }) => !LIST_PATTERN.test(text))
-    .map(({ text }) => text)
-    .join("\n");
-  return countWords(prose, locale);
+  const proseLines: string[] = [];
+  for (const { text } of markdownContentLines(content)) {
+    if (!LIST_PATTERN.test(text)) proseLines.push(text);
+  }
+  return countWords(proseLines.join("\n"), locale);
 }
 
 export function parseDailyNote(

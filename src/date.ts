@@ -100,8 +100,12 @@ export function shiftAnchor(date: PlainDate, mode: PeriodMode, amount: number): 
   return { year, month, day: Math.min(date.day, finalDay) };
 }
 
+function sortableDateValue(date: PlainDate): number {
+  return date.year * 10_000 + date.month * 100 + date.day;
+}
+
 export function compareDates(left: PlainDate, right: PlainDate): number {
-  return toIsoDate(left).localeCompare(toIsoDate(right));
+  return sortableDateValue(left) - sortableDateValue(right);
 }
 
 export function getPeriodBounds(anchor: PlainDate, mode: PeriodMode, weekStart: Weekday): PeriodBounds {
@@ -124,7 +128,8 @@ export function getPeriodBounds(anchor: PlainDate, mode: PeriodMode, weekStart: 
 }
 
 export function dateIsWithin(date: PlainDate, bounds: PeriodBounds): boolean {
-  return compareDates(date, bounds.start) >= 0 && compareDates(date, bounds.end) < 0;
+  const value = sortableDateValue(date);
+  return value >= sortableDateValue(bounds.start) && value < sortableDateValue(bounds.end);
 }
 
 function formatDate(date: PlainDate, options: Intl.DateTimeFormatOptions, locale?: string): string {
