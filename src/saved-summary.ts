@@ -191,15 +191,26 @@ export function createSavedSummaryDescriptor(
       if (includeChecked) values.push(formatNumber(checked.get(period.key) ?? 0));
       lines.push(`| ${values.join(" | ")} |`);
     }
-    const tallyRows = periods.flatMap((period) => {
-      const values = tagged
-        .filter((tag) => tag.values.has(period.key))
-        .map((tag) => `${tag.label} ${formatNumber(tag.values.get(period.key) ?? 0)}`);
-      if (values.length === 0) return [];
-      return [`- **${breakdownLabel(period.label, period.path)}:** ${values.join(" · ")}`];
-    });
-    if (tallyRows.length > 0) {
-      lines.push("", `## ${tallyBreakdownHeading(mode)}`, "", ...tallyRows);
+    const tallyColumns = tagged.filter((tag) => tag.values.size > 0);
+    if (tallyColumns.length > 0) {
+      const tallyHeader = [periodColumn(mode), ...tallyColumns.map((tag) => tag.label)];
+      const tallyAlignment = ["---", ...tallyColumns.map(() => "---:")];
+      lines.push(
+        "",
+        `## ${tallyBreakdownHeading(mode)}`,
+        "",
+        `| ${tallyHeader.join(" | ")} |`,
+        `| ${tallyAlignment.join(" | ")} |`
+      );
+      for (const period of periods) {
+        const values = [
+          breakdownLabel(period.label, period.path, true),
+          ...tallyColumns.map((tag) => tag.values.has(period.key)
+            ? formatNumber(tag.values.get(period.key) ?? 0)
+            : "—")
+        ];
+        lines.push(`| ${values.join(" | ")} |`);
+      }
     }
   }
   lines.push("", GENERATED_SUMMARY_MARKER, "");

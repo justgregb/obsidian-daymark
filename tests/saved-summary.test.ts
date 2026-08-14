@@ -76,7 +76,7 @@ describe("saved summaries", () => {
     expect(vaultRoot.path).toBe("2026/08/Tally — 2026-08.md");
   });
 
-  it("serializes a natural overview, chronological table, sparse tallies, and writing highlight", () => {
+  it("serializes a natural overview, chronological activity and tally tables, and writing highlight", () => {
     const data = aggregate("year", { year: 2026, month: 8, day: 12 }, [
       "Journal/2026/01/2026-01-02.md",
       "Journal/2026/02/2026-02-01.md"
@@ -107,8 +107,10 @@ describe("saved summaries", () => {
       "",
       "## Tallies by month",
       "",
-      "- **Jan:** Pushups 160",
-      "- **Feb:** Greek 1",
+      "| Month | Greek | Pushups |",
+      "| --- | ---: | ---: |",
+      "| Jan | — | 160 |",
+      "| Feb | 1 | — |",
       "",
       "<!-- daymark-tally-report:v2 -->",
       ""
@@ -141,7 +143,7 @@ describe("saved summaries", () => {
     expect(summary.content).toContain("**Tallies:** Stillness 0");
     expect(summary.content).toContain("## Tallies by day");
     expect(summary.content).toContain(
-      "- **[[Journal/2026/08/2026-08-12|Wed, Aug 12]]:** Stillness 0"
+      "| [[Journal/2026/08/2026-08-12\\|Wed, Aug 12]] | 0 |"
     );
   });
 
