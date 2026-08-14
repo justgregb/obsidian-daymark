@@ -1,6 +1,6 @@
 # Daymark
 
-Daymark is a local-first Obsidian journal built around dated Markdown notes. It adds a useful month calendar to the sidebar and keeps Tally as a focused companion for Week, Month, and Year summaries.
+Daymark is a local-first Obsidian journal built around dated Markdown notes. It adds useful Week, Month, and Year calendars to the sidebar and keeps Tally as a focused companion for period summaries.
 
 Daymark has no runtime dependencies, accounts, analytics, or network requests. Journal notes remain ordinary Markdown inside the vault.
 
@@ -10,7 +10,7 @@ Run **Daymark: Open Daymark** or select the Daymark ribbon icon.
 
 The compact sidebar calendar provides:
 
-- Month and Week views that retain the selected date;
+- Week, Month, and Year views that retain the selected date;
 - any explicit first weekday, or a locale default that shows the resolved day;
 - optional tinting for any combination of weekdays;
 - pale activity tiles for dates with daily notes;
@@ -19,9 +19,13 @@ The compact sidebar calendar provides:
 - click-to-open existing daily notes;
 - confirmation before creating missing notes using an optional Markdown template.
 
-Calendar cells can use the first local image embedded in a daily note as that day's cover. Covers fill the date cell, while image-free notes use a pale accent tile. Highlighted weekdays use a separate neutral background; when the states overlap, the daily-note tile takes priority. Both Obsidian embeds such as `![[Shelf/Attachments/photo.jpg]]` and local Markdown image embeds are supported; remote images are ignored. Note covers can be disabled in settings.
+Month and Week cells can use the first local image embedded in a daily note as that day's cover. Covers fill the date cell, while image-free notes use a pale accent tile. Highlighted weekdays use a separate neutral background; when the states overlap, the daily-note tile takes priority. Both Obsidian embeds such as `![[Shelf/Attachments/photo.jpg]]` and local Markdown image embeds are supported; remote images are ignored. Note covers can be disabled in settings. Month view also lets you scroll through nearby months with a gentle settling snap; the fixed header and totals follow the centered month without forcing a rerender. A faint fading rule marks each period boundary without repeating its title.
 
-Week view presents seven compact, aligned agenda rows. Every row starts with a 36-pixel date tile: the first local image fills the tile when available, image-free notes use the accent tint, and empty dates remain plain. The row shows the weekday plus that note's words and checked items. Its footer totals the displayed week and keeps Tally one click away. A small icon beside the period title switches between Month and Week without adding another toolbar row.
+Week view presents seven compact, aligned agenda rows. Every row starts with a 36-pixel date tile: the first local image fills the tile when available, image-free notes use the accent tint, and empty dates remain plain. The row shows the weekday plus that note's words and checked items. Scroll to settle onto a nearby week; the header and footer follow it using the same gentle snap as Month view.
+
+Year view is a compact activity overview rather than twelve full calendars. All twelve months appear as small month tiles whose marks show ordinary days, recurring weekdays, daily-note activity, today, and the selected date. Scroll and settle onto a nearby year using the same snap and fading boundary as Month and Week, or select a tile to open that month at full size. Individual note opening and creation remain in Month and Week views.
+
+A small icon beside the period title cycles Week, Month, and Year without adding another toolbar row. The footer totals the displayed period and opens Tally in the matching mode.
 
 The calendar follows the configured folder and Moment-style date format, including nested paths such as `YYYY/MM/YYYY-MM-DD`. Daymark does not depend on the Daily Notes or Calendar plugins.
 
@@ -79,7 +83,7 @@ Daymark counts Unicode words in journal prose. It excludes frontmatter, fenced c
 - **Start week on:** locale default or any weekday from Sunday through Saturday.
 - **Shade recurring days:** add a neutral background to recurring days such as weekends.
 - **Show note covers:** show or hide local-image covers in calendar cells.
-- **Show calendar totals:** show daily-note count, words, and checked items for the displayed month or week.
+- **Show calendar totals:** show daily-note count, words, and checked items for the displayed week, month, or year.
 - **Show Tally:** total journal words, checked items, and tagged values by week, month, or year.
 - **Additional writing folder:** optionally show one recursive, all-time prose word total for another folder.
 

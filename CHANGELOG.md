@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Added a compact Year activity overview with twelve month tiles, full-year totals, month drill-down, and direct Year handoff to Tally.
+- Added gentle proximity snapping and faint fading separators between nearby Week, Month, and Year periods without duplicate headings or forced rerenders, and unified Calendar's compact mode control with Tally's Week → Month → Year cycle.
+
 ## 0.1.0 — 2026-08-12
 
 - Prepared the source, documentation, privacy statement, license, and minified runtime artifacts for the initial public release.

@@ -283,7 +283,7 @@ export class DaymarkSettingTab extends PluginSettingTab {
 
     new Setting(calendarSettings)
       .setName("Show calendar totals")
-      .setDesc("Show daily notes, words, and checked items for the week or month on screen.")
+      .setDesc("Show daily notes, words, and checked items for the week, month, or year on screen.")
       .addToggle((toggle) => {
         toggle
           .setValue(this.plugin.settings.showSelectedDayStats)

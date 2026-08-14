@@ -230,7 +230,7 @@ export class TallyView extends ItemView {
     void this.app.workspace.requestSaveLayout();
   }
 
-  showPeriod(mode: "week" | "month", anchorDate: PlainDate): void {
+  showPeriod(mode: PeriodMode, anchorDate: PlainDate): void {
     this.mode = mode;
     this.anchorDate = anchorDate;
     this.saveViewState();
