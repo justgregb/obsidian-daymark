@@ -1,0 +1,31 @@
+:root {
+  --background-modifier-border: #dedede;
+  --background-modifier-hover: #e7e7e7;
+  --background-primary: #f7f7f7;
+  --font-interface: -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-medium: 500;
+  --font-normal: 400;
+  --font-semibold: 600;
+  --font-ui-medium: 16px;
+  --font-ui-small: 14px;
+  --font-ui-smaller: 12px;
+  --interactive-accent: #78b8f2;
+  --radius-s: 5px;
+  --size-4-1: 4px;
+  --size-4-2: 8px;
+  --size-4-3: 12px;
+  --text-faint: #aaa;
+  --text-muted: #737373;
+  --text-normal: #151515;
+  font-family: var(--font-interface);
+}
+
+body { background: #ddd; margin: 0; padding: 20px; }
+#fixtures { align-items: start; display: grid; gap: 18px; grid-template-columns: repeat(auto-fill, minmax(285px, max-content)); }
+.fixture { background: var(--background-primary); border: 1px solid var(--background-modifier-border); box-sizing: border-box; height: 520px; overflow: hidden; }
+.fixture-label { color: var(--text-muted); font-size: 11px; margin: 6px 12px; }
+.theme-dark { --background-modifier-border: #3b3b3b; --background-modifier-hover: #333; --background-primary: #202020; --text-faint: #666; --text-muted: #aaa; --text-normal: #eee; }
+.fixture button { color: var(--text-muted); font: inherit; }
+.fixture .daymark-calendar-view { height: calc(100% - 24px); min-height: 0; }
+.fixture .daymark-calendar-header-controls button { background: transparent; border: 0; height: 30px; padding: 0; width: 30px; }
+.fixture .daymark-calendar-body { min-height: 240px; }

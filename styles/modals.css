@@ -1,0 +1,81 @@
+.daymark-create-note-modal {
+  max-width: min(480px, calc(100vw - var(--size-4-8)));
+}
+
+.daymark-create-note-prompt {
+  line-height: var(--line-height-normal);
+  margin: 0 0 var(--size-4-3);
+}
+
+.daymark-create-note-path {
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  box-sizing: border-box;
+  color: var(--text-muted);
+  display: block;
+  overflow-wrap: anywhere;
+  padding: var(--size-4-2) var(--size-4-3);
+  width: 100%;
+}
+
+.daymark-create-note-actions {
+  display: flex;
+  gap: var(--size-4-2);
+  justify-content: flex-end;
+  margin-top: var(--size-4-5);
+}
+
+.daymark-quick-log-modal {
+  max-width: min(460px, calc(100vw - var(--size-4-8)));
+}
+
+.daymark-quick-log-description {
+  color: var(--text-muted);
+  line-height: var(--line-height-normal);
+  margin: 0 0 var(--size-4-3);
+}
+
+.daymark-quick-log-field,
+.daymark-quick-log-field input {
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.daymark-quick-log-field input {
+  min-height: 36px;
+}
+
+.daymark-quick-log-actions {
+  display: flex;
+  gap: var(--size-4-2);
+  justify-content: flex-end;
+  margin-top: var(--size-4-4);
+}
+
+.daymark-go-to-date-modal {
+  max-width: min(420px, calc(100vw - var(--size-4-8)));
+}
+
+.daymark-go-to-date-description {
+  color: var(--text-muted);
+  line-height: var(--line-height-normal);
+  margin: 0 0 var(--size-4-3);
+}
+
+.daymark-go-to-date-field,
+.daymark-go-to-date-field input {
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.daymark-go-to-date-field input {
+  min-height: 36px;
+}
+
+.daymark-go-to-date-actions {
+  display: flex;
+  gap: var(--size-4-2);
+  justify-content: flex-end;
+  margin-top: var(--size-4-4);
+}

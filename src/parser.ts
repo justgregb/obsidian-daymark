@@ -1,4 +1,5 @@
 import { toIsoDate } from "./date";
+import { wordSegmenter } from "./intl-cache";
 import type { DailyRecord, PlainDate, TaggedTaskSource } from "./types";
 
 const TASK_PATTERN = /^\s*[-+*]\s+\[([xX ])\]\s+(.*)$/u;
@@ -97,8 +98,8 @@ function markdownToVisibleProse(value: string): string {
 
 export function countWords(value: string, locale?: string): number {
   const text = markdownToVisibleProse(value);
-  if (typeof Intl.Segmenter === "function") {
-    const segmenter = new Intl.Segmenter(locale, { granularity: "word" });
+  const segmenter = wordSegmenter(locale);
+  if (segmenter) {
     let count = 0;
     for (const segment of segmenter.segment(text)) {
       if (segment.isWordLike) count += 1;

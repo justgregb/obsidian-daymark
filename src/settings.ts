@@ -11,6 +11,7 @@ import {
   isValidObsidianDateFormat,
   previewObsidianDateFormat
 } from "./obsidian-date";
+import { dateTimeFormatter } from "./intl-cache";
 import type DaymarkPlugin from "./main";
 import type { WeekStartSetting, Weekday } from "./types";
 import { EXPLICIT_WEEK_STARTS } from "./week-start";
@@ -29,7 +30,7 @@ export function normalizeTemplatePath(value: string): string {
 
 function weekdayName(locale: string, weekday: Weekday, width: "long" | "narrow" = "long"): string {
   const sample = new Date(Date.UTC(2026, 0, 4 + weekday));
-  return new Intl.DateTimeFormat(locale, { weekday: width, timeZone: "UTC" }).format(sample);
+  return dateTimeFormatter(locale, { weekday: width, timeZone: "UTC" }).format(sample);
 }
 
 function createSettingsSection(
@@ -105,7 +106,7 @@ export class DaymarkSettingTab extends PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
 
-    new Setting(containerEl).setName("Daymark").setHeading();
+    containerEl.createEl("h2", { text: "Daymark" });
     containerEl.createEl("p", {
       cls: "setting-item-description daymark-settings-intro",
       text: "Make Daymark yours. Choose where your daily notes live, how the calendar feels, and whether Tally summarizes them. Everything stays inside this vault."
@@ -283,12 +284,12 @@ export class DaymarkSettingTab extends PluginSettingTab {
 
     new Setting(calendarSettings)
       .setName("Show calendar totals")
-      .setDesc("Show daily notes, words, and checked items for the week, month, or year on screen.")
+      .setDesc("Show daily notes, words, and checked items for the week or month on screen.")
       .addToggle((toggle) => {
         toggle
-          .setValue(this.plugin.settings.showSelectedDayStats)
+          .setValue(this.plugin.settings.showCalendarTotals)
           .onChange((value) => {
-            void this.plugin.updateSettings({ showSelectedDayStats: value });
+            void this.plugin.updateSettings({ showCalendarTotals: value });
           });
       });
 
@@ -300,7 +301,7 @@ export class DaymarkSettingTab extends PluginSettingTab {
 
     new Setting(tallySettings)
       .setName("Show Tally")
-      .setDesc("Add Tally to the calendar footer and command palette. A local Markdown report is created only when you choose Save.")
+      .setDesc("Let the calendar unfold into journal totals for the period on screen. A local Markdown report is created only when you choose Save.")
       .addToggle((toggle) => {
         toggle
           .setValue(this.plugin.settings.tallyEnabled)

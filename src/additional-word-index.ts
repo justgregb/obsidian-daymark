@@ -21,6 +21,7 @@ export function additionalWordFolderLabel(folder: string): string {
 
 export class AdditionalWordIndex {
   private readonly records = new Map<string, number>();
+  private wordTotal = 0;
   private ready = false;
   private rebuilding: Promise<void> | null = null;
 
@@ -31,9 +32,7 @@ export class AdditionalWordIndex {
   ) {}
 
   get totalWords(): number {
-    let total = 0;
-    for (const words of this.records.values()) total += words;
-    return total;
+    return this.wordTotal;
   }
 
   async ensureReady(): Promise<void> {
@@ -52,15 +51,18 @@ export class AdditionalWordIndex {
 
   async refresh(file: TFile): Promise<void> {
     if (!this.matches(file)) {
-      this.records.delete(file.path);
+      this.remove(file.path);
       return;
     }
     const content = await this.app.vault.cachedRead(file);
-    this.records.set(file.path, countMarkdownProseWords(content, this.getLocale()));
+    this.setWords(file.path, countMarkdownProseWords(content, this.getLocale()));
   }
 
   remove(path: string): void {
+    const previous = this.records.get(path);
+    if (previous === undefined) return;
     this.records.delete(path);
+    this.wordTotal -= previous;
   }
 
   has(path: string): boolean {
@@ -78,7 +80,14 @@ export class AdditionalWordIndex {
       return [file.path, countMarkdownProseWords(content, this.getLocale())] as const;
     }));
     this.records.clear();
-    for (const [path, words] of parsed) this.records.set(path, words);
+    this.wordTotal = 0;
+    for (const [path, words] of parsed) this.setWords(path, words);
     this.ready = true;
+  }
+
+  private setWords(path: string, words: number): void {
+    const previous = this.records.get(path) ?? 0;
+    this.records.set(path, words);
+    this.wordTotal += words - previous;
   }
 }

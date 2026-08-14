@@ -47,7 +47,17 @@ describe("period boundaries", () => {
 
   it("formats readable titles", () => {
     const bounds = getPeriodBounds(anchor, "week", 1);
-    expect(formatPeriodTitle(bounds, "week", "en-US")).toBe("Aug 10–16, 2026");
+    expect(formatPeriodTitle(bounds, "week", "en-US")).toBe("Aug 10–16 ’26");
+    expect(formatPeriodTitle(
+      getPeriodBounds({ year: 2026, month: 7, day: 29 }, "week", 1),
+      "week",
+      "en-US"
+    )).toBe("Jul 27–Aug 2 ’26");
+    expect(formatPeriodTitle(
+      getPeriodBounds({ year: 2026, month: 12, day: 30 }, "week", 1),
+      "week",
+      "en-US"
+    )).toBe("Dec 28–Jan 3 ’27");
     expect(formatPeriodTitle(getPeriodBounds(anchor, "month", 1), "month", "en-US")).toBe("Aug 2026");
   });
 });

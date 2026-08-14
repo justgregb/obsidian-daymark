@@ -65,8 +65,11 @@ describe("incremental store behavior", () => {
     const first = record("2026-08-10", 10, 1, 10);
     store.upsert(first);
     expect(store.size).toBe(1);
+    expect(store.getByIsoDate(first.isoDate)).toBe(first);
 
-    store.upsert({ ...first, words: 20 });
+    const modified = { ...first, words: 20 };
+    store.upsert(modified);
+    expect(store.getByIsoDate(first.isoDate)).toBe(modified);
     const week = getPeriodBounds(first.date, "week", 1);
     expect(store.aggregate(week).words).toBe(20);
 
@@ -77,9 +80,43 @@ describe("incremental store behavior", () => {
 
     store.remove(moved.path);
     expect(store.size).toBe(0);
+    expect(store.getByIsoDate(first.isoDate)).toBeNull();
 
-    store.replace([first, record("2026-08-11", 15, 0)]);
+    const second = record("2026-08-11", 15, 0);
+    store.replace([first, second]);
     expect(store.size).toBe(2);
+    expect(store.getByIsoDate(second.isoDate)).toBe(second);
     expect(store.aggregate(week).words).toBe(25);
+  });
+
+  it("keeps date lookup correct when an indexed path moves to another date", () => {
+    const store = new DaymarkStore();
+    const first = record("2026-08-10", 10, 0);
+    const changedDate = {
+      ...record("2026-08-11", 20, 0),
+      path: first.path
+    };
+
+    store.upsert(first);
+    store.upsert(changedDate);
+
+    expect(store.getByIsoDate(first.isoDate)).toBeNull();
+    expect(store.getByIsoDate(changedDate.isoDate)).toBe(changedDate);
+  });
+
+  it("reuses period aggregates until the journal index changes", () => {
+    const store = new DaymarkStore();
+    const first = record("2026-08-10", 10, 0);
+    const bounds = getPeriodBounds(first.date, "week", 1);
+    store.upsert(first);
+
+    const cached = store.aggregate(bounds);
+    expect(store.aggregate(bounds)).toBe(cached);
+
+    store.upsert({ ...first, words: 25 });
+    const refreshed = store.aggregate(bounds);
+    expect(refreshed).not.toBe(cached);
+    expect(refreshed.words).toBe(25);
+    expect(store.aggregate(bounds)).toBe(refreshed);
   });
 });

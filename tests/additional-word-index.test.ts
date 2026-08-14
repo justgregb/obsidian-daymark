@@ -50,5 +50,10 @@ describe("additional word-count folder", () => {
 
     index.remove("Desk/Longform/Act 1/Scene.md");
     expect(index.totalWords).toBe(2);
+
+    files.splice(0, files.length, { path: "Desk/Longform/Replacement.md" });
+    contents.set("Desk/Longform/Replacement.md", "A completely new draft");
+    await index.rebuild();
+    expect(index.totalWords).toBe(4);
   });
 });

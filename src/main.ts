@@ -3,8 +3,14 @@ import { AdditionalWordIndex } from "./additional-word-index";
 import { DAYMARK_CALENDAR_VIEW_TYPE, DaymarkCalendarView } from "./calendar-view";
 import { confirmDailyNoteCreation } from "./create-note-modal";
 import { dailyNotePath, renderDailyNoteTemplate } from "./daily-note";
+import { parseIsoDate, todayPlainDate } from "./date";
+import { promptForDate } from "./go-to-date-modal";
 import { DaymarkIndex } from "./indexer";
 import { isValidObsidianDateFormat } from "./obsidian-date";
+import { legacyTallyToDaymarkState } from "./legacy-tally-state";
+import { LEGACY_TALLY_VIEW_TYPE, LegacyTallyView } from "./legacy-tally-view";
+import { appendQuickLogEntry, createQuickLogEntry } from "./quick-log";
+import { promptQuickLog } from "./quick-log-modal";
 import {
   DaymarkSettingTab,
   normalizeAdditionalWordFolder,
@@ -16,6 +22,7 @@ import {
   settingsRequireAdditionalWordRebuild,
   settingsRequireRebuild
 } from "./settings-policy";
+import { CURRENT_SETTINGS_VERSION, migrateStoredSettings } from "./settings-migration";
 import {
   createSavedSummaryDescriptor,
   getSavedSummaryState,
@@ -31,7 +38,6 @@ import {
   type PlainDate,
   type Weekday
 } from "./types";
-import { TALLY_VIEW_TYPE, TallyView } from "./view";
 import { normalizeHighlightedWeekdays, normalizeWeekStartSetting, resolveWeekStartSetting } from "./week-start";
 
 export default class DaymarkPlugin extends Plugin {
@@ -40,6 +46,7 @@ export default class DaymarkPlugin extends Plugin {
   additionalWordIndex!: AdditionalWordIndex;
   private readonly listeners = new Set<() => void>();
   private readonly refreshTimers = new Map<string, number>();
+  private readonly summaryDescriptors = new WeakMap<PeriodAggregate, Map<string, SavedSummaryDescriptor>>();
   private rebuildTimer: number | null = null;
   private additionalWordRebuildTimer: number | null = null;
 
@@ -57,7 +64,7 @@ export default class DaymarkPlugin extends Plugin {
     );
 
     this.registerView(DAYMARK_CALENDAR_VIEW_TYPE, (leaf: WorkspaceLeaf) => new DaymarkCalendarView(leaf, this));
-    this.registerView(TALLY_VIEW_TYPE, (leaf: WorkspaceLeaf) => new TallyView(leaf, this));
+    this.registerView(LEGACY_TALLY_VIEW_TYPE, (leaf: WorkspaceLeaf) => new LegacyTallyView(leaf));
     this.addRibbonIcon("calendar-days", "Open Daymark", () => {
       void this.openCalendarView();
     });
@@ -66,6 +73,27 @@ export default class DaymarkPlugin extends Plugin {
       name: "Open Daymark",
       callback: () => {
         void this.openCalendarView();
+      }
+    });
+    this.addCommand({
+      id: "quick-log",
+      name: "Quick Log",
+      callback: () => {
+        void this.openQuickLog();
+      }
+    });
+    this.addCommand({
+      id: "open-todays-note",
+      name: "Open today’s note",
+      callback: () => {
+        void this.openOrCreateDailyNote(todayPlainDate());
+      }
+    });
+    this.addCommand({
+      id: "go-to-date",
+      name: "Go to date",
+      callback: () => {
+        void this.goToDate();
       }
     });
     this.addCommand({
@@ -97,7 +125,7 @@ export default class DaymarkPlugin extends Plugin {
 
     this.app.workspace.onLayoutReady(() => {
       this.registerVaultEvents();
-      if (!this.settings.tallyEnabled) this.app.workspace.detachLeavesOfType(TALLY_VIEW_TYPE);
+      if (!this.settings.tallyEnabled) this.app.workspace.detachLeavesOfType(LEGACY_TALLY_VIEW_TYPE);
       void this.migrateExistingSidebar();
     });
   }
@@ -109,7 +137,7 @@ export default class DaymarkPlugin extends Plugin {
     if (this.additionalWordRebuildTimer !== null) window.clearTimeout(this.additionalWordRebuildTimer);
     this.listeners.clear();
     this.app.workspace.detachLeavesOfType(DAYMARK_CALENDAR_VIEW_TYPE);
-    this.app.workspace.detachLeavesOfType(TALLY_VIEW_TYPE);
+    this.app.workspace.detachLeavesOfType(LEGACY_TALLY_VIEW_TYPE);
   }
 
   subscribe(listener: () => void): () => void {
@@ -131,6 +159,7 @@ export default class DaymarkPlugin extends Plugin {
     const next: DaymarkSettings = {
       ...this.settings,
       ...change,
+      settingsVersion: CURRENT_SETTINGS_VERSION,
       dateFormat: requestedDateFormat === undefined
         ? this.settings.dateFormat
         : isValidObsidianDateFormat(requestedDateFormat) ? requestedDateFormat : this.settings.dateFormat,
@@ -148,7 +177,7 @@ export default class DaymarkPlugin extends Plugin {
     this.settings = next;
     await this.saveData(next);
     if (previous.tallyEnabled && !next.tallyEnabled) {
-      this.app.workspace.detachLeavesOfType(TALLY_VIEW_TYPE);
+      this.app.workspace.detachLeavesOfType(LEGACY_TALLY_VIEW_TYPE);
     }
     const rebuildDailyNotes = settingsRequireRebuild(previous, next);
     const rebuildAdditionalWords = settingsRequireAdditionalWordRebuild(previous, next);
@@ -168,36 +197,53 @@ export default class DaymarkPlugin extends Plugin {
 
   async openOrCreateDailyNote(date: PlainDate): Promise<void> {
     try {
-      await this.index.ensureReady();
-      const indexed = this.index.recordForDate(date);
-      let file = indexed ? this.app.vault.getAbstractFileByPath(indexed.path) : null;
-      if (!(file instanceof TFile)) {
-        const path = dailyNotePath(this.settings.journalFolder, this.settings.dateFormat, date);
-        const existing = this.app.vault.getAbstractFileByPath(path);
-        if (existing instanceof TFolder) throw new Error(`A folder already exists at ${path}.`);
-        if (existing instanceof TFile) {
-          file = existing;
-        } else {
-          const confirmed = await confirmDailyNoteCreation(this.app, date, path, this.locale);
-          if (!confirmed) return;
-          const confirmedExisting = this.app.vault.getAbstractFileByPath(path);
-          if (confirmedExisting instanceof TFolder) throw new Error(`A folder already exists at ${path}.`);
-          if (confirmedExisting instanceof TFile) {
-            file = confirmedExisting;
-          } else {
-            const folder = path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : "";
-            await this.ensureFolder(folder);
-            const content = await this.dailyNoteContent(date);
-            file = await this.app.vault.create(path, content);
-          }
-        }
-      }
-      if (!(file instanceof TFile)) throw new Error("Daymark could not resolve the daily note file.");
+      const file = await this.getOrCreateDailyNote(date);
+      if (!file) return;
       await this.app.workspace.getLeaf(false).openFile(file);
     } catch (error) {
       console.error("Daymark could not open the daily note.", error);
       new Notice(error instanceof Error ? error.message : "Daymark could not open the daily note.");
     }
+  }
+
+  private async openQuickLog(): Promise<void> {
+    const text = await promptQuickLog(this.app);
+    if (text === null) return;
+    const capturedAt = new Date();
+    const date = todayPlainDate(capturedAt);
+    try {
+      const file = await this.getOrCreateDailyNote(date);
+      if (!file) return;
+      const entry = createQuickLogEntry(text, capturedAt);
+      await this.app.vault.process(file, (content) => appendQuickLogEntry(content, entry));
+      new Notice("Added to today’s daily note.");
+    } catch (error) {
+      console.error("Daymark could not add the Quick Log entry.", error);
+      new Notice(error instanceof Error ? error.message : "Daymark could not add the Quick Log entry.");
+    }
+  }
+
+  private async getOrCreateDailyNote(date: PlainDate): Promise<TFile | null> {
+    await this.index.ensureReady();
+    const indexed = this.index.recordForDate(date);
+    const indexedFile = indexed ? this.app.vault.getAbstractFileByPath(indexed.path) : null;
+    if (indexedFile instanceof TFile) return indexedFile;
+
+    const path = dailyNotePath(this.settings.journalFolder, this.settings.dateFormat, date);
+    const existing = this.app.vault.getAbstractFileByPath(path);
+    if (existing instanceof TFolder) throw new Error(`A folder already exists at ${path}.`);
+    if (existing instanceof TFile) return existing;
+
+    const confirmed = await confirmDailyNoteCreation(this.app, date, path, this.locale);
+    if (!confirmed) return null;
+    const confirmedExisting = this.app.vault.getAbstractFileByPath(path);
+    if (confirmedExisting instanceof TFolder) throw new Error(`A folder already exists at ${path}.`);
+    if (confirmedExisting instanceof TFile) return confirmedExisting;
+
+    const folder = path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : "";
+    await this.ensureFolder(folder);
+    const content = await this.dailyNoteContent(date);
+    return this.app.vault.create(path, content);
   }
 
   async saveSummary(mode: PeriodMode, aggregate: PeriodAggregate): Promise<string | null> {
@@ -213,16 +259,7 @@ export default class DaymarkPlugin extends Plugin {
       if (state === "save" && !isGeneratedTallySummary(content)) {
         throw new Error(`Tally will not overwrite ${summary.path} because it was not generated by Tally.`);
       }
-      if (state === "update") {
-        await this.app.vault.process(existing, (currentContent) => {
-          if (!isGeneratedTallySummary(currentContent)) {
-            throw new Error(`Tally will not overwrite ${summary.path} because it was not generated by Tally.`);
-          }
-          return getSavedSummaryState(currentContent, summary.content) === "saved"
-            ? currentContent
-            : summary.content;
-        });
-      }
+      if (state === "update") await this.app.vault.modify(existing, summary.content);
     } else {
       await this.app.vault.create(summary.path, summary.content);
     }
@@ -236,12 +273,18 @@ export default class DaymarkPlugin extends Plugin {
     return getSavedSummaryState(await this.app.vault.cachedRead(existing), summary.content);
   }
 
+  summaryPath(mode: PeriodMode, aggregate: PeriodAggregate): string {
+    return this.summaryDescriptor(mode, aggregate).path;
+  }
+
   private async loadSettings(): Promise<void> {
-    const stored = (await this.loadData()) as Partial<DaymarkSettings> | null;
+    const migration = migrateStoredSettings(await this.loadData());
+    const stored = migration.settings;
     const dateFormat = stored?.dateFormat ?? DEFAULT_SETTINGS.dateFormat;
     this.settings = {
       ...DEFAULT_SETTINGS,
       ...stored,
+      settingsVersion: CURRENT_SETTINGS_VERSION,
       dateFormat: isValidObsidianDateFormat(dateFormat) ? dateFormat : DEFAULT_SETTINGS.dateFormat,
       highlightedWeekdays: normalizeHighlightedWeekdays(stored?.highlightedWeekdays),
       additionalWordFolder: normalizeAdditionalWordFolder(
@@ -251,6 +294,7 @@ export default class DaymarkPlugin extends Plugin {
       templatePath: normalizeTemplatePath(stored?.templatePath ?? DEFAULT_SETTINGS.templatePath),
       weekStart: normalizeWeekStartSetting(stored?.weekStart)
     };
+    if (migration.changed) await this.saveData(this.settings);
   }
 
   private registerVaultEvents(): void {
@@ -367,13 +411,25 @@ export default class DaymarkPlugin extends Plugin {
   }
 
   private summaryDescriptor(mode: PeriodMode, aggregate: PeriodAggregate): SavedSummaryDescriptor {
-    return createSavedSummaryDescriptor(
+    const locale = this.locale;
+    const weekStart = this.resolveWeekStart();
+    const key = JSON.stringify([mode, this.settings.journalFolder, weekStart, locale]);
+    let descriptors = this.summaryDescriptors.get(aggregate);
+    if (!descriptors) {
+      descriptors = new Map();
+      this.summaryDescriptors.set(aggregate, descriptors);
+    }
+    const cached = descriptors.get(key);
+    if (cached) return cached;
+    const descriptor = createSavedSummaryDescriptor(
       this.settings.journalFolder,
       mode,
       aggregate,
-      this.resolveWeekStart(),
-      this.locale
+      weekStart,
+      locale
     );
+    descriptors.set(key, descriptor);
+    return descriptor;
   }
 
   private matchesSummaryPath(path: string): boolean {
@@ -388,7 +444,14 @@ export default class DaymarkPlugin extends Plugin {
 
   private async saveCurrentPeriod(): Promise<void> {
     const view = await this.openTallyView();
-    await view?.saveCurrentPeriod();
+    await view?.saveCurrentTallyPeriod();
+  }
+
+  private async goToDate(): Promise<void> {
+    const date = await promptForDate(this.app, todayPlainDate());
+    if (!date) return;
+    const view = await this.openCalendarView();
+    view?.showDate(date);
   }
 
   async openCalendarView(): Promise<DaymarkCalendarView | null> {
@@ -412,44 +475,41 @@ export default class DaymarkPlugin extends Plugin {
     return leaf.view instanceof DaymarkCalendarView ? leaf.view : null;
   }
 
-  async openTallyView(): Promise<TallyView | null> {
+  async openTallyView(): Promise<DaymarkCalendarView | null> {
     if (!this.settings.tallyEnabled) {
       new Notice("Tally is disabled in Daymark settings.");
       return null;
     }
-    const existing = this.app.workspace.getLeavesOfType(TALLY_VIEW_TYPE);
-    let leaf = existing.find((candidate) => candidate.getRoot() === this.app.workspace.rightSplit);
-    if (leaf) {
-      for (const candidate of existing) {
-        if (candidate !== leaf) candidate.detach();
-      }
-    }
-    if (!leaf) {
-      const savedState = existing[0]?.view instanceof TallyView ? existing[0].view.getState() : undefined;
-      this.app.workspace.detachLeavesOfType(TALLY_VIEW_TYPE);
-      leaf = this.app.workspace.getRightLeaf(true) ?? undefined;
-      if (!leaf) {
-        new Notice("Daymark could not open Tally in the right sidebar.");
-        return null;
-      }
-      await leaf.setViewState({ type: TALLY_VIEW_TYPE, active: true, state: savedState });
-    }
-    await this.app.workspace.revealLeaf(leaf);
-    return leaf.view instanceof TallyView ? leaf.view : null;
+    const view = await this.openCalendarView();
+    view?.expandTally();
+    return view;
   }
 
   private async migrateExistingSidebar(): Promise<void> {
-    if (this.app.workspace.getLeavesOfType(DAYMARK_CALENDAR_VIEW_TYPE).length > 0) {
-      await this.openCalendarView();
+    const calendarLeaves = this.app.workspace.getLeavesOfType(DAYMARK_CALENDAR_VIEW_TYPE);
+    const tallyLeaves = this.app.workspace.getLeavesOfType(LEGACY_TALLY_VIEW_TYPE);
+    if (calendarLeaves.length > 0) {
+      const legacyState = tallyLeaves[0]?.view instanceof LegacyTallyView ? tallyLeaves[0].view.getState() : null;
+      this.app.workspace.detachLeavesOfType(LEGACY_TALLY_VIEW_TYPE);
+      const view = await this.openCalendarView();
+      if (legacyState) {
+        const migrated = legacyTallyToDaymarkState(legacyState);
+        const anchor = typeof migrated.selectedDate === "string" ? parseIsoDate(migrated.selectedDate) : null;
+        if (anchor) view?.showPeriod(migrated.mode, anchor);
+      }
       return;
     }
-    const tallyLeaves = this.app.workspace.getLeavesOfType(TALLY_VIEW_TYPE);
     const leaf = tallyLeaves.find((candidate) => candidate.getRoot() === this.app.workspace.rightSplit);
     if (!leaf) return;
+    const legacyState = leaf.view instanceof LegacyTallyView ? leaf.view.getState() : {};
     for (const candidate of tallyLeaves) {
       if (candidate !== leaf) candidate.detach();
     }
-    await leaf.setViewState({ type: DAYMARK_CALENDAR_VIEW_TYPE, active: true });
+    await leaf.setViewState({
+      type: DAYMARK_CALENDAR_VIEW_TYPE,
+      active: true,
+      state: legacyTallyToDaymarkState(legacyState)
+    });
     await this.app.workspace.revealLeaf(leaf);
   }
 }

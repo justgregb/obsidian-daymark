@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Daymark responsive visual matrix</title>
+  <link rel="stylesheet" href="../../styles.css">
+  <link rel="stylesheet" href="fixtures.css">
+</head>
+<body>
+  <main id="fixtures"></main>
+  <script>
+    const widths = [285, 320, 420];
+    const themes = ["light", "dark"];
+    const states = ["collapsed", "expanded", "long-title", "empty"];
+    const titles = {
+      collapsed: "AUG 2026",
+      expanded: "AUG 2026",
+      "long-title": "27 JUL–2 AUG ’26",
+      empty: "SEP 2026"
+    };
+    const root = document.querySelector("#fixtures");
+    for (const width of widths) for (const theme of themes) for (const state of states) {
+      const fixture = document.createElement("section");
+      fixture.className = `fixture theme-${theme}`;
+      fixture.style.width = `${width}px`;
+      fixture.dataset.width = String(width);
+      fixture.dataset.theme = theme;
+      fixture.dataset.state = state;
+      fixture.innerHTML = `
+        <p class="fixture-label">${width}px · ${theme} · ${state}</p>
+        <div class="daymark-calendar-view is-month-view has-footer ${state === "expanded" || state === "empty" ? "is-tally-expanded" : ""}">
+          <div class="daymark-calendar-header">
+            <div class="daymark-calendar-title">${titles[state]}</div>
+            <div class="daymark-calendar-header-controls"><button>▣</button><button>‹</button><button>◷</button><button>›</button></div>
+          </div>
+          <div class="daymark-calendar-body"><div class="daymark-month-section"><div class="daymark-calendar-weekdays"><span>MON</span><span>TUE</span><span>WED</span><span>THU</span><span>FRI</span><span>SAT</span><span>SUN</span></div></div></div>
+          <div class="daymark-calendar-footer ${state === "expanded" || state === "empty" ? "is-expanded" : ""}">
+            ${state === "collapsed" || state === "long-title" ? '<button class="daymark-calendar-tally"><span class="daymark-calendar-tally-label">Tally</span><span>⌄</span></button><span class="daymark-calendar-selected-stats"><span class="daymark-calendar-selected-stats-text is-full">12/31 days · 1,428 words · 5/6 checked</span><span class="daymark-calendar-selected-stats-text is-compact">12/31 · 1,428 words · 5/6</span></span>' : `<div class="daymark-tally-heading"><button class="daymark-calendar-tally"><span class="daymark-calendar-tally-label">Tally</span><span>⌃</span></button><button class="daymark-tally-report-action" ${state === "empty" ? "disabled" : ""}><span>▣</span><span class="daymark-tally-report-label">Save</span></button></div><div class="daymark-tally-panel">${state === "empty" ? '<p class="daymark-tally-empty">Nothing to tally in this period.</p>' : '<div class="daymark-tally-metrics"><div class="daymark-tally-metric"><span class="daymark-tally-metric-label">Daily notes</span><span class="daymark-tally-metric-value">12 / 31</span></div><div class="daymark-tally-metric"><span class="daymark-tally-metric-label">Words</span><span class="daymark-tally-metric-value">1,428</span></div><div class="daymark-tally-metric"><span class="daymark-tally-metric-label">Checked items</span><span class="daymark-tally-metric-value">5 / 6</span></div><div class="daymark-tally-metric"><span class="daymark-tally-metric-label">Pushups</span><span class="daymark-tally-metric-value">160</span></div></div><div class="daymark-tally-metric daymark-tally-additional-source"><span class="daymark-tally-metric-label">Drafts · All time</span><span class="daymark-tally-metric-value">12,900 words</span></div></div>`}
+          </div>
+        </div>`;
+      root.append(fixture);
+    }
+  </script>
+</body>
+</html>

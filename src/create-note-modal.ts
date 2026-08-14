@@ -1,5 +1,6 @@
 import { ButtonComponent, Modal, type App } from "obsidian";
 import { toDate } from "./date";
+import { dateTimeFormatter } from "./intl-cache";
 import type { PlainDate } from "./types";
 
 class CreateDailyNoteModal extends Modal {
@@ -19,7 +20,7 @@ class CreateDailyNoteModal extends Modal {
     this.modalEl.addClass("daymark-create-note-modal");
     this.titleEl.setText("Create daily note?");
 
-    const dateLabel = new Intl.DateTimeFormat(this.locale, {
+    const dateLabel = dateTimeFormatter(this.locale, {
       dateStyle: "full",
       timeZone: "UTC"
     }).format(toDate(this.date));

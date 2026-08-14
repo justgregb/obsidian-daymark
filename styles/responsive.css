@@ -1,0 +1,170 @@
+@container daymark-sidebar (max-width: 320px) {
+  .daymark-calendar-title {
+    font-size: calc(var(--font-adaptive-smaller, var(--font-ui-small)) + 2px);
+    letter-spacing: 0.035em;
+  }
+
+  .daymark-calendar-weekdays {
+    letter-spacing: 0.07em;
+  }
+
+  .daymark-week-details,
+  .daymark-calendar-footer {
+    gap: var(--size-4-1);
+  }
+
+  .daymark-tally-metric {
+    padding-left: var(--size-4-1);
+    padding-right: var(--size-4-1);
+  }
+
+  .daymark-calendar-selected-stats-text.is-full {
+    display: none;
+  }
+
+  .daymark-calendar-selected-stats-text.is-compact {
+    display: block;
+  }
+
+}
+
+@container daymark-sidebar (min-width: 260px) {
+  .daymark-year-months {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@container daymark-sidebar (min-width: 560px) {
+  .daymark-year-months {
+    column-gap: var(--size-4-3);
+    max-width: 760px;
+    row-gap: var(--size-4-2);
+  }
+}
+
+@container daymark-sidebar (max-width: 285px) {
+  .daymark-calendar-view .daymark-calendar-today {
+    padding: 0;
+  }
+
+  .daymark-calendar-weekdays {
+    font-size: calc(var(--font-adaptive-smallest, var(--font-ui-smaller)) - 1px);
+    letter-spacing: 0.04em;
+  }
+
+  .daymark-year-months {
+    gap: var(--size-4-1);
+  }
+
+  .daymark-calendar-view .daymark-year-month {
+    padding: 3px;
+  }
+
+  .daymark-calendar-view .daymark-week-row {
+    gap: var(--size-4-1);
+    grid-template-columns: 34px minmax(0, 1fr);
+    padding-left: 2px;
+    padding-right: 2px;
+  }
+
+  .daymark-week-date-tile {
+    height: 34px;
+    width: 34px;
+  }
+
+  .daymark-week-weekday-long {
+    display: none;
+  }
+
+  .daymark-week-weekday-short {
+    display: inline;
+  }
+
+  .daymark-calendar-selected-stats {
+    font-size: var(--font-adaptive-smallest, var(--font-ui-smaller));
+  }
+
+  .daymark-calendar-view .daymark-calendar-tally,
+  .daymark-tally-report-action {
+    padding-left: 5px;
+    padding-right: 5px;
+  }
+
+  .daymark-tally-report-label {
+    display: none;
+  }
+}
+
+@media (max-width: 700px) {
+  .daymark-settings-intro {
+    margin-bottom: var(--size-4-4);
+  }
+
+  .daymark-settings-section {
+    margin-bottom: var(--size-4-6);
+  }
+
+  .daymark-settings-card {
+    border-radius: var(--radius-m);
+    padding: 0 var(--size-4-2);
+  }
+
+  .daymark-settings-card > .setting-item {
+    align-items: stretch;
+    flex-direction: column;
+    gap: var(--size-4-3);
+    padding-left: var(--size-4-1);
+    padding-right: var(--size-4-1);
+  }
+
+  .daymark-settings-card .setting-item-control {
+    justify-content: flex-start;
+    width: 100%;
+  }
+
+  .daymark-settings-card input[type="text"] {
+    width: 100%;
+  }
+
+  .daymark-highlight-days-setting {
+    gap: 0;
+  }
+
+  .daymark-highlight-days-setting .setting-item-control {
+    justify-content: stretch;
+    padding-top: var(--size-4-3);
+    width: 100%;
+  }
+
+  .daymark-weekday-toggles {
+    grid-template-columns: repeat(7, minmax(30px, 1fr));
+    width: 100%;
+  }
+
+  .daymark-settings-card .daymark-weekday-button {
+    width: 100%;
+  }
+}
+
+.daymark-setting-preview {
+  margin-top: 4px;
+}
+
+.daymark-setting-preview-value {
+  color: var(--text-accent);
+}
+
+.daymark-setting-preview-invalid,
+.daymark-setting-error {
+  color: var(--text-error);
+}
+
+.daymark-setting-invalid {
+  border-color: var(--text-error) !important;
+}
+
+.daymark-calendar-view button:focus-visible {
+  box-shadow: none;
+  outline: 1px solid var(--interactive-accent);
+  outline-offset: -1px;
+}

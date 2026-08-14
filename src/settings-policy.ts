@@ -1,7 +1,8 @@
 import type { DaymarkSettings } from "./types";
 
 export function settingsAreEqual(left: DaymarkSettings, right: DaymarkSettings): boolean {
-  return left.journalFolder === right.journalFolder
+  return left.settingsVersion === right.settingsVersion
+    && left.journalFolder === right.journalFolder
     && left.dateFormat === right.dateFormat
     && left.templatePath === right.templatePath
     && left.additionalWordFolder === right.additionalWordFolder
@@ -9,7 +10,7 @@ export function settingsAreEqual(left: DaymarkSettings, right: DaymarkSettings):
     && left.highlightedWeekdays.length === right.highlightedWeekdays.length
     && left.highlightedWeekdays.every((weekday, index) => weekday === right.highlightedWeekdays[index])
     && left.showCoverPhotos === right.showCoverPhotos
-    && left.showSelectedDayStats === right.showSelectedDayStats
+    && left.showCalendarTotals === right.showCalendarTotals
     && left.tallyEnabled === right.tallyEnabled;
 }
 

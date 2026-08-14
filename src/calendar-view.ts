@@ -1,29 +1,34 @@
-import { ItemView, setIcon, TFile, type ViewStateResult, type WorkspaceLeaf } from "obsidian";
+import { ItemView, Platform, setIcon, TFile, type ViewStateResult, type WorkspaceLeaf } from "obsidian";
 import {
   calendarGridDates,
-  calendarMonthCells,
-  calendarMonthDistance,
-  calendarMonthSequence,
   calendarWeekDates,
-  calendarWeekDistance,
-  calendarWeekSequence,
   calendarWeekdays,
-  calendarYearDistance,
-  calendarYearSequence
+  calendarYearActivityDates,
+  yearWritingIntensity
 } from "./calendar-grid";
-import { nextCalendarMode } from "./calendar-mode";
+import { installRovingNavigation } from "./calendar-keyboard";
+import { formatCalendarFooterSummary } from "./calendar-summary";
+import {
+  isYearMonthNavigationKey,
+  moveCalendarViewport,
+  moveYearViewport,
+  selectCalendarDate,
+  type CalendarViewportState,
+  yearMonthNavigationIndex
+} from "./calendar-state";
 import { isSupportedCoverPath } from "./cover";
 import {
   getPeriodBounds,
   formatPeriodTitle,
   parseIsoDate,
-  shiftAnchor,
   todayPlainDate,
   toDate,
   toIsoDate
 } from "./date";
+import { InlineTally } from "./inline-tally";
+import { dateTimeFormatter, numberFormatter } from "./intl-cache";
 import type DaymarkPlugin from "./main";
-import type { DailyRecord, PeriodMode, PlainDate, Weekday } from "./types";
+import type { DailyRecord, PeriodAggregate, PeriodMode, PlainDate, Weekday } from "./types";
 
 export const DAYMARK_CALENDAR_VIEW_TYPE = "daymark-calendar-view";
 let calendarViewSequence = 0;
@@ -31,7 +36,9 @@ let calendarViewSequence = 0;
 interface CalendarViewState {
   mode?: unknown;
   month?: unknown;
+  week?: unknown;
   selectedDate?: unknown;
+  tallyExpanded?: unknown;
 }
 
 type CalendarViewMode = PeriodMode;
@@ -40,18 +47,36 @@ function firstOfMonth(date: PlainDate): PlainDate {
   return { year: date.year, month: date.month, day: 1 };
 }
 
+function nextCalendarViewMode(mode: CalendarViewMode): CalendarViewMode {
+  if (mode === "week") return "month";
+  if (mode === "month") return "year";
+  return "week";
+}
+
 export class DaymarkCalendarView extends ItemView {
   private readonly accessibleId = `daymark-calendar-${++calendarViewSequence}`;
   private mode: CalendarViewMode = "month";
   private displayedMonth = firstOfMonth(todayPlainDate());
+  private displayedWeek = todayPlainDate();
   private selectedDate = todayPlainDate();
+  private tallyExpanded = !Platform.isMobile;
   private unsubscribe: (() => void) | null = null;
   private opened = false;
-  private periodScrollTimer: number | null = null;
   private dayCellSequence = 0;
+  private formatterLocale: string | null = null;
+  private fullDateFormatter!: Intl.DateTimeFormat;
+  private longWeekdayNames: string[] = [];
+  private monthFormatter!: Intl.DateTimeFormat;
+  private numberFormatter!: Intl.NumberFormat;
+  private shortWeekdayNames: string[] = [];
+  private renderSelectedIso = "";
+  private renderTodayIso = "";
+  private renderVersion = 0;
+  private readonly inlineTally: InlineTally;
 
   constructor(leaf: WorkspaceLeaf, private readonly plugin: DaymarkPlugin) {
     super(leaf);
+    this.inlineTally = new InlineTally(plugin, () => this.render());
   }
 
   getViewType(): string {
@@ -70,7 +95,9 @@ export class DaymarkCalendarView extends ItemView {
     return {
       mode: this.mode,
       month: toIsoDate(this.displayedMonth),
-      selectedDate: toIsoDate(this.selectedDate)
+      week: toIsoDate(this.displayedWeek),
+      selectedDate: toIsoDate(this.selectedDate),
+      tallyExpanded: this.tallyExpanded
     };
   }
 
@@ -84,11 +111,19 @@ export class DaymarkCalendarView extends ItemView {
       const selected = parseIsoDate(state.selectedDate);
       if (selected) this.selectedDate = selected;
     }
+    if (typeof state.week === "string") {
+      const week = parseIsoDate(state.week);
+      if (week) this.displayedWeek = week;
+    } else {
+      this.displayedWeek = this.selectedDate;
+    }
+    if (typeof state.tallyExpanded === "boolean") this.tallyExpanded = state.tallyExpanded;
     await super.setState(state, result);
     if (this.opened) this.render();
   }
 
   override async onOpen(): Promise<void> {
+    this.containerEl.addClass("daymark-calendar-container");
     this.opened = true;
     this.unsubscribe = this.plugin.subscribe(() => this.render());
     this.registerEvent(this.app.workspace.on("file-open", (file) => this.syncToFile(file)));
@@ -98,7 +133,7 @@ export class DaymarkCalendarView extends ItemView {
     }));
     this.renderLoading();
     try {
-      await this.plugin.index.ensureReady();
+      await this.plugin.ensureTallyReady();
       this.syncToFile(this.app.workspace.getActiveFile(), false);
       this.render();
     } catch (error) {
@@ -108,7 +143,7 @@ export class DaymarkCalendarView extends ItemView {
 
   override async onClose(): Promise<void> {
     this.opened = false;
-    this.clearPeriodScrollTimer();
+    this.containerEl.removeClass("daymark-calendar-container");
     this.unsubscribe?.();
     this.unsubscribe = null;
   }
@@ -132,29 +167,28 @@ export class DaymarkCalendarView extends ItemView {
 
   private render(): void {
     if (!this.opened) return;
+    const renderVersion = ++this.renderVersion;
+    this.prepareRenderContext();
     const weekStart = this.plugin.resolveWeekStart();
-    const anchor = this.mode === "month" ? this.displayedMonth : this.selectedDate;
+    const anchor = this.mode === "week" ? this.displayedWeek : this.displayedMonth;
     const bounds = getPeriodBounds(anchor, this.mode, weekStart);
+    const aggregate = this.plugin.index.aggregate(bounds);
     const root = this.contentEl;
-    this.clearPeriodScrollTimer();
     this.dayCellSequence = 0;
     root.empty();
     root.addClass("daymark-calendar-view");
     root.toggleClass("is-week-view", this.mode === "week");
     root.toggleClass("is-month-view", this.mode === "month");
     root.toggleClass("is-year-view", this.mode === "year");
-    root.toggleClass("has-footer", this.plugin.settings.showSelectedDayStats || this.plugin.settings.tallyEnabled);
+    root.toggleClass("is-tally-expanded", this.plugin.settings.tallyEnabled && this.tallyExpanded);
+    root.toggleClass("has-footer", this.plugin.settings.showCalendarTotals || this.plugin.settings.tallyEnabled);
 
     this.createHeader(root, bounds);
     const body = root.createDiv("daymark-calendar-body");
-    if (this.mode === "year") {
-      this.createYearScroller(body, weekStart);
-    } else if (this.mode === "month") {
-      this.createMonthScroller(body, weekStart);
-    } else {
-      this.createWeekScroller(body, weekStart);
-    }
-    this.createFooter(root, bounds);
+    if (this.mode === "year") this.createYearView(body, weekStart);
+    else if (this.mode === "month") this.createMonthView(body, weekStart);
+    else this.createWeekView(body, weekStart);
+    this.createFooter(root, aggregate, renderVersion);
   }
 
   private createHeader(parent: HTMLElement, bounds: ReturnType<typeof getPeriodBounds>): void {
@@ -162,7 +196,7 @@ export class DaymarkCalendarView extends ItemView {
     const title = header.createDiv("daymark-calendar-title");
     title.setText(formatPeriodTitle(bounds, this.mode, this.plugin.locale));
     const controls = header.createDiv("daymark-calendar-header-controls");
-    const targetMode = nextCalendarMode(this.mode);
+    const targetMode = nextCalendarViewMode(this.mode);
     const modeIcons: Record<CalendarViewMode, string> = {
       week: "calendar-range",
       month: "calendar-days",
@@ -183,6 +217,7 @@ export class DaymarkCalendarView extends ItemView {
     today.addEventListener("click", () => {
       const current = todayPlainDate();
       this.displayedMonth = firstOfMonth(current);
+      this.displayedWeek = current;
       this.selectedDate = current;
       this.saveViewState();
       this.render();
@@ -192,10 +227,15 @@ export class DaymarkCalendarView extends ItemView {
 
   private setMode(mode: CalendarViewMode): void {
     if (this.mode === mode) return;
-    if (mode === "week" && !this.dateIsInDisplayedMonth(this.selectedDate)) {
-      this.selectedDate = this.displayedMonth;
+    const previousMode = this.mode;
+    if (mode === "week") {
+      this.displayedWeek = this.dateIsInDisplayedMonth(this.selectedDate)
+        ? this.selectedDate
+        : this.displayedMonth;
     }
-    if (mode === "month") this.displayedMonth = firstOfMonth(this.selectedDate);
+    if (mode === "month" && previousMode === "week") {
+      this.displayedMonth = firstOfMonth(this.displayedWeek);
+    }
     this.mode = mode;
     this.saveViewState();
     this.render();
@@ -207,17 +247,16 @@ export class DaymarkCalendarView extends ItemView {
     setIcon(button, iconName);
     button.addEventListener("click", () => {
       if (this.mode === "week") {
-        this.selectedDate = shiftAnchor(this.selectedDate, "week", amount);
-        this.displayedMonth = firstOfMonth(this.selectedDate);
+        this.applyViewportState(moveCalendarViewport(this.viewportState(), "week", amount));
       } else if (this.mode === "month") {
-        const selectionAnchor = this.dateIsInDisplayedMonth(this.selectedDate)
-          ? this.selectedDate
-          : this.displayedMonth;
-        this.selectedDate = shiftAnchor(selectionAnchor, "month", amount);
-        this.displayedMonth = firstOfMonth(this.selectedDate);
+        this.applyViewportState(moveCalendarViewport(this.viewportState(), "month", amount));
       } else {
-        this.selectedDate = shiftAnchor(this.selectedDate, "year", amount);
-        this.displayedMonth = firstOfMonth(this.selectedDate);
+        const state = moveYearViewport(
+          this.displayedMonth,
+          this.selectedDate,
+          this.displayedMonth.year + amount
+        );
+        this.displayedMonth = state.displayedMonth;
       }
       this.saveViewState();
       this.render();
@@ -227,254 +266,140 @@ export class DaymarkCalendarView extends ItemView {
   private createWeekdays(parent: HTMLElement, weekStart: Weekday): void {
     const weekdays = parent.createDiv("daymark-calendar-weekdays");
     for (const weekday of calendarWeekdays(weekStart)) {
-      const sample = new Date(Date.UTC(2026, 0, 4 + weekday));
       weekdays.createEl("span", {
-        text: new Intl.DateTimeFormat(this.plugin.locale, { weekday: "short", timeZone: "UTC" })
-          .format(sample)
-          .toLocaleUpperCase(this.plugin.locale)
+        text: this.shortWeekdayNames[weekday]?.toLocaleUpperCase(this.plugin.locale) ?? ""
       });
     }
   }
 
-  private createMonthScroller(parent: HTMLElement, weekStart: Weekday): void {
-    parent.addClass("daymark-period-scroller");
-    parent.addClass("daymark-month-scroller");
-    const months = calendarMonthSequence(this.displayedMonth, 3);
-    for (const month of months) this.createMonthSection(parent, month, weekStart);
-
-    const currentMonth = parent.querySelector<HTMLElement>(`[data-month="${toIsoDate(this.displayedMonth)}"]`);
-    if (currentMonth) parent.scrollTop = currentMonth.offsetTop - parent.offsetTop;
-
-    const settle = (): void => {
-      this.clearPeriodScrollTimer();
-      this.periodScrollTimer = window.setTimeout(() => this.settleMonthScroll(parent), 240);
-    };
-    parent.addEventListener("scroll", settle, { passive: true });
-  }
-
-  private createMonthSection(
-    parent: HTMLElement,
-    month: PlainDate,
-    weekStart: Weekday
-  ): void {
+  private createMonthView(parent: HTMLElement, weekStart: Weekday): void {
     const section = parent.createDiv("daymark-month-section");
-    section.dataset.month = toIsoDate(month);
     this.createWeekdays(section, weekStart);
     const grid = section.createDiv("daymark-calendar-grid");
     grid.setAttr("role", "grid");
-    for (const date of calendarGridDates(month, weekStart)) {
-      this.createDay(grid, date, this.plugin.index.recordForDate(date), month);
+    for (const date of calendarGridDates(this.displayedMonth, weekStart)) {
+      this.createDay(grid, date, this.plugin.index.recordForDate(date), this.displayedMonth);
     }
+    installRovingNavigation(
+      grid,
+      ".daymark-calendar-day",
+      7,
+      this.dateIsInDisplayedMonth(this.selectedDate) ? this.renderSelectedIso : undefined
+    );
   }
 
-  private settleMonthScroll(body: HTMLElement): void {
-    this.clearPeriodScrollTimer();
-    if (!body.isConnected || this.mode !== "month") return;
-    const closest = this.closestPeriodSection(body, ".daymark-month-section");
-    const month = closest?.dataset.month ? parseIsoDate(closest.dataset.month) : null;
-    if (!month || calendarMonthDistance(this.displayedMonth, month) === 0) return;
-    const distance = calendarMonthDistance(this.displayedMonth, month);
-    this.displayedMonth = firstOfMonth(month);
-    this.selectedDate = shiftAnchor(this.selectedDate, "month", distance);
-    this.updateMonthChrome(body);
-    this.saveViewState();
+  private createYearView(parent: HTMLElement, weekStart: Weekday): void {
+    this.createYearSection(parent, this.displayedMonth.year, weekStart);
   }
 
-  private updateMonthChrome(body: HTMLElement): void {
-    const selectedDate = toIsoDate(this.selectedDate);
-    for (const day of Array.from(body.querySelectorAll<HTMLElement>(".daymark-calendar-day"))) {
-      const selected = day.dataset.date === selectedDate && !day.classList.contains("is-outside-month");
-      day.classList.toggle("is-selected", selected);
-      day.setAttr("aria-selected", String(selected));
-    }
-
-    this.updatePeriodHeaderAndFooter("month", this.displayedMonth);
-  }
-
-  private closestPeriodSection(body: HTMLElement, selector: string): HTMLElement | null {
-    const sections = Array.from(body.querySelectorAll<HTMLElement>(selector));
-    const bodyCenter = body.offsetTop + body.scrollTop + body.clientHeight / 2;
-    return sections.reduce<HTMLElement | null>((best, section) => {
-      if (!best) return section;
-      const sectionCenter = section.offsetTop + section.offsetHeight / 2;
-      const bestCenter = best.offsetTop + best.offsetHeight / 2;
-      return Math.abs(sectionCenter - bodyCenter) < Math.abs(bestCenter - bodyCenter) ? section : best;
-    }, null);
-  }
-
-  private updatePeriodHeaderAndFooter(mode: PeriodMode, anchor: PlainDate): void {
-    const bounds = getPeriodBounds(anchor, mode, this.plugin.resolveWeekStart());
-    this.contentEl.querySelector<HTMLElement>(".daymark-calendar-title")
-      ?.setText(formatPeriodTitle(bounds, mode, this.plugin.locale));
-    this.contentEl.querySelector<HTMLElement>(".daymark-calendar-footer")?.remove();
-    this.createFooter(this.contentEl, bounds);
-  }
-
-  private clearPeriodScrollTimer(): void {
-    if (this.periodScrollTimer === null) return;
-    window.clearTimeout(this.periodScrollTimer);
-    this.periodScrollTimer = null;
-  }
-
-  private createYearScroller(parent: HTMLElement, weekStart: Weekday): void {
-    parent.addClass("daymark-period-scroller");
-    parent.addClass("daymark-year-scroller");
-    for (const year of calendarYearSequence(this.selectedDate)) {
-      this.createYearSection(parent, year.year, weekStart);
-    }
-
-    const current = parent.querySelector<HTMLElement>(`[data-year="${this.selectedDate.year}"]`);
-    if (current) parent.scrollTop = current.offsetTop - parent.offsetTop;
-
-    const settle = (): void => {
-      this.clearPeriodScrollTimer();
-      this.periodScrollTimer = window.setTimeout(() => this.settleYearScroll(parent), 240);
-    };
-    parent.addEventListener("scroll", settle, { passive: true });
-  }
-
-  private createYearSection(parent: HTMLElement, year: number, weekStart: Weekday): void {
+  private createYearSection(
+    parent: HTMLElement,
+    year: number,
+    weekStart: Weekday
+  ): void {
     const section = parent.createDiv("daymark-year-section");
-    section.dataset.year = String(year);
     const months = section.createDiv("daymark-year-months");
+    const aggregate = this.plugin.index.aggregate(getPeriodBounds({ year, month: 1, day: 1 }, "year", weekStart));
+    const wordsByDate = new Map(aggregate.wordSources.map((source) => [source.isoDate, source.value]));
+    const busiestDayWords = Math.max(0, ...aggregate.wordSources.map((source) => source.value));
     for (let month = 1; month <= 12; month += 1) {
-      const monthDate = { year, month, day: 1 };
-      const dates = calendarMonthCells(monthDate, weekStart);
-      const noteCount = dates.reduce((count, date) => (
-        count + (date && this.plugin.index.recordForDate(date) ? 1 : 0)
-      ), 0);
-      const monthName = new Intl.DateTimeFormat(this.plugin.locale, {
-        month: "short",
-        timeZone: "UTC"
-      }).format(toDate(monthDate));
+      const first = { year, month, day: 1 };
+      const dates = calendarYearActivityDates(first, weekStart);
+      const activityDates = dates.map((date) => {
+        const isoDate = date ? toIsoDate(date) : null;
+        return {
+          date,
+          hasNote: date ? this.plugin.index.recordForDate(date) !== null : false,
+          words: isoDate ? wordsByDate.get(isoDate) ?? 0 : 0
+        };
+      });
+      const noteCount = activityDates.reduce((total, entry) => total + (entry.hasNote ? 1 : 0), 0);
+      const wordCount = activityDates.reduce((total, entry) => total + entry.words, 0);
+      const monthLabel = this.monthFormatter.format(toDate(first));
       const selectedMonth = this.selectedDate.year === year && this.selectedDate.month === month;
-      const monthButton = months.createEl("button", {
+      const button = months.createEl("button", {
         cls: `daymark-year-month${selectedMonth ? " is-selected-month" : ""}`
       });
-      monthButton.dataset.month = toIsoDate(monthDate);
-      monthButton.setAttr(
+      button.dataset.month = toIsoDate(first);
+      button.setAttr(
         "aria-label",
-        `${monthName} ${monthDate.year}, ${noteCount} ${noteCount === 1 ? "daily note" : "daily notes"}. Show month view.`
+        `${monthLabel} ${year}, ${noteCount} ${noteCount === 1 ? "daily note" : "daily notes"}, ${wordCount} ${wordCount === 1 ? "word" : "words"}. Show month view.`
       );
-      monthButton.createSpan({ cls: "daymark-year-month-title", text: monthName });
-      const activity = monthButton.createSpan("daymark-year-activity");
+      button.setAttr("aria-keyshortcuts", "ArrowLeft ArrowRight ArrowUp ArrowDown Home End");
+      button.createSpan({ cls: "daymark-year-month-title", text: monthLabel });
+      const activity = button.createSpan("daymark-year-activity");
       activity.setAttr("aria-hidden", "true");
-      for (const date of dates) {
+
+      for (const { date, hasNote, words } of activityDates) {
         if (!date) {
           activity.createSpan("daymark-year-mark is-empty");
           continue;
         }
         const isoDate = toIsoDate(date);
         const weekday = toDate(date).getUTCDay() as Weekday;
+        const intensity = yearWritingIntensity(words, busiestDayWords);
         const classes = [
           "daymark-year-mark",
           this.plugin.settings.highlightedWeekdays.includes(weekday) ? "is-highlighted" : "",
-          this.plugin.index.recordForDate(date) ? "has-note" : "",
-          isoDate === toIsoDate(todayPlainDate()) ? "is-today" : "",
-          isoDate === toIsoDate(this.selectedDate) ? "is-selected" : ""
+          hasNote ? "has-note" : "",
+          intensity ? `has-writing-${intensity}` : "",
+          isoDate === this.renderTodayIso ? "is-today" : "",
+          isoDate === this.renderSelectedIso ? "is-selected" : ""
         ].filter(Boolean).join(" ");
         const mark = activity.createSpan(classes);
         mark.dataset.date = isoDate;
       }
-      monthButton.addEventListener("click", () => {
-        this.selectedDate = this.selectedDate.year === year && this.selectedDate.month === month
-          ? this.selectedDate
-          : monthDate;
-        this.displayedMonth = monthDate;
+
+      button.addEventListener("click", () => {
+        this.displayedMonth = first;
         this.setMode("month");
       });
+      button.addEventListener("keydown", (event) => this.handleYearMonthKeydown(event, button, months));
     }
   }
 
-  private settleYearScroll(body: HTMLElement): void {
-    this.clearPeriodScrollTimer();
-    if (!body.isConnected || this.mode !== "year") return;
-    const closest = this.closestPeriodSection(body, ".daymark-year-section");
-    const year = Number(closest?.dataset.year);
-    if (!Number.isInteger(year)) return;
-    const distance = calendarYearDistance(this.selectedDate, { year, month: 1, day: 1 });
-    if (distance === 0) return;
-    this.selectedDate = shiftAnchor(this.selectedDate, "year", distance);
-    this.displayedMonth = firstOfMonth(this.selectedDate);
-    this.updateYearChrome(body);
-    this.saveViewState();
+  private handleYearMonthKeydown(
+    event: KeyboardEvent,
+    current: HTMLButtonElement,
+    months: HTMLElement
+  ): void {
+    if (!isYearMonthNavigationKey(event.key)) return;
+    event.preventDefault();
+    const buttons = Array.from(months.querySelectorAll<HTMLButtonElement>(".daymark-year-month"));
+    const currentIndex = buttons.indexOf(current);
+    const firstTop = buttons[0]?.offsetTop;
+    const firstNextRow = firstTop === undefined
+      ? -1
+      : buttons.findIndex((button) => button.offsetTop > firstTop + 1);
+    const gridTemplate = window.getComputedStyle(months).gridTemplateColumns.trim();
+    const computedTracks = gridTemplate.length > 0 && gridTemplate !== "none"
+      ? gridTemplate.split(/\s+/u).filter(Boolean).length
+      : 0;
+    const columnCount = firstNextRow > 0 ? firstNextRow : computedTracks > 0 ? computedTracks : 3;
+    const targetIndex = yearMonthNavigationIndex(currentIndex, event.key, columnCount, buttons.length);
+    if (targetIndex !== null) buttons[targetIndex]?.focus();
   }
 
-  private updateYearChrome(body: HTMLElement): void {
-    const selectedMonth = toIsoDate(firstOfMonth(this.selectedDate));
-    for (const month of Array.from(body.querySelectorAll<HTMLElement>(".daymark-year-month"))) {
-      month.classList.toggle("is-selected-month", month.dataset.month === selectedMonth);
-    }
-
-    const selectedDate = toIsoDate(this.selectedDate);
-    for (const mark of Array.from(body.querySelectorAll<HTMLElement>(".daymark-year-mark"))) {
-      mark.classList.toggle("is-selected", mark.dataset.date === selectedDate);
-    }
-    this.updatePeriodHeaderAndFooter("year", this.selectedDate);
-  }
-
-  private createWeekScroller(parent: HTMLElement, weekStart: Weekday): void {
-    parent.addClass("daymark-period-scroller");
-    parent.addClass("daymark-week-scroller");
-    const currentWeek = getPeriodBounds(this.selectedDate, "week", weekStart).start;
-    for (const week of calendarWeekSequence(this.selectedDate, weekStart, 3)) {
-      this.createWeekSection(parent, week, weekStart);
-    }
-
-    const current = parent.querySelector<HTMLElement>(`[data-week="${toIsoDate(currentWeek)}"]`);
-    if (current) parent.scrollTop = current.offsetTop - parent.offsetTop;
-
-    const settle = (): void => {
-      this.clearPeriodScrollTimer();
-      this.periodScrollTimer = window.setTimeout(() => this.settleWeekScroll(parent, weekStart), 240);
-    };
-    parent.addEventListener("scroll", settle, { passive: true });
-  }
-
-  private createWeekSection(parent: HTMLElement, week: PlainDate, weekStart: Weekday): void {
+  private createWeekView(parent: HTMLElement, weekStart: Weekday): void {
+    const currentWeek = getPeriodBounds(this.displayedWeek, "week", weekStart).start;
     const section = parent.createDiv("daymark-week-section");
-    section.dataset.week = toIsoDate(week);
     const list = section.createDiv("daymark-week-list");
-    for (const date of calendarWeekDates(week, weekStart)) {
+    for (const date of calendarWeekDates(currentWeek, weekStart)) {
       this.createWeekRow(list, date, this.plugin.index.recordForDate(date));
     }
-  }
-
-  private settleWeekScroll(body: HTMLElement, weekStart: Weekday): void {
-    this.clearPeriodScrollTimer();
-    if (!body.isConnected || this.mode !== "week") return;
-    const closest = this.closestPeriodSection(body, ".daymark-week-section");
-    const week = closest?.dataset.week ? parseIsoDate(closest.dataset.week) : null;
-    if (!week) return;
-    const distance = calendarWeekDistance(this.selectedDate, week, weekStart);
-    if (distance === 0) return;
-    this.selectedDate = shiftAnchor(this.selectedDate, "week", distance);
-    this.displayedMonth = firstOfMonth(this.selectedDate);
-    this.updateWeekChrome(body);
-    this.saveViewState();
-  }
-
-  private updateWeekChrome(body: HTMLElement): void {
-    const selectedDate = toIsoDate(this.selectedDate);
-    for (const row of Array.from(body.querySelectorAll<HTMLElement>(".daymark-week-row"))) {
-      const selected = row.dataset.date === selectedDate;
-      row.classList.toggle("is-selected", selected);
-      row.setAttr("aria-pressed", String(selected));
-    }
-    this.updatePeriodHeaderAndFooter("week", this.selectedDate);
+    installRovingNavigation(list, ".daymark-week-row", 1, this.renderSelectedIso);
   }
 
   private createDay(
     parent: HTMLElement,
     date: PlainDate,
     record: DailyRecord | null,
-    visibleMonth = this.displayedMonth
+    displayedMonth = this.displayedMonth
   ): void {
     const isoDate = toIsoDate(date);
-    const current = todayPlainDate();
-    const outside = date.year !== visibleMonth.year || date.month !== visibleMonth.month;
-    const selected = isoDate === toIsoDate(this.selectedDate) && !outside;
-    const today = isoDate === toIsoDate(current) && !outside;
+    const outside = date.year !== displayedMonth.year || date.month !== displayedMonth.month;
+    const selected = isoDate === this.renderSelectedIso && !outside;
+    const today = isoDate === this.renderTodayIso && !outside;
     const weekday = toDate(date).getUTCDay();
     const highlighted = this.plugin.settings.highlightedWeekdays.includes(weekday as Weekday);
     const cover = record && this.plugin.settings.showCoverPhotos ? this.firstCoverFile(record) : null;
@@ -502,13 +427,16 @@ export class DaymarkCalendarView extends ItemView {
     if (cover) {
       const image = button.createEl("img", { cls: "daymark-calendar-day-cover" });
       image.setAttr("alt", "");
+      image.setAttr("decoding", "async");
       image.setAttr("loading", "lazy");
       image.src = this.app.vault.getResourcePath(cover);
     }
     button.createEl("span", { cls: "daymark-calendar-day-number", text: String(date.day) });
     button.addEventListener("click", () => {
-      this.selectedDate = date;
-      if (outside) this.displayedMonth = firstOfMonth(date);
+      const state = selectCalendarDate(date);
+      this.selectedDate = state.selectedDate;
+      this.displayedMonth = state.displayedMonth;
+      this.displayedWeek = state.displayedWeek;
       this.saveViewState();
       this.render();
       void this.plugin.openOrCreateDailyNote(date);
@@ -518,8 +446,8 @@ export class DaymarkCalendarView extends ItemView {
   private createWeekRow(parent: HTMLElement, date: PlainDate, record: DailyRecord | null): void {
     const isoDate = toIsoDate(date);
     const weekday = toDate(date).getUTCDay() as Weekday;
-    const selected = isoDate === toIsoDate(this.selectedDate);
-    const today = isoDate === toIsoDate(todayPlainDate());
+    const selected = isoDate === this.renderSelectedIso;
+    const today = isoDate === this.renderTodayIso;
     const highlighted = this.plugin.settings.highlightedWeekdays.includes(weekday);
     const cover = record && this.plugin.settings.showCoverPhotos ? this.firstCoverFile(record) : null;
     const classes = [
@@ -545,6 +473,7 @@ export class DaymarkCalendarView extends ItemView {
     if (cover) {
       const image = tile.createEl("img", { cls: "daymark-week-date-cover" });
       image.setAttr("alt", "");
+      image.setAttr("decoding", "async");
       image.setAttr("loading", "lazy");
       image.src = this.app.vault.getResourcePath(cover);
     }
@@ -554,11 +483,11 @@ export class DaymarkCalendarView extends ItemView {
     const weekdayLabel = details.createEl("span", { cls: "daymark-week-weekday" });
     weekdayLabel.createEl("span", {
       cls: "daymark-week-weekday-long",
-      text: new Intl.DateTimeFormat(this.plugin.locale, { weekday: "long", timeZone: "UTC" }).format(toDate(date))
+      text: this.longWeekdayNames[weekday] ?? ""
     });
     weekdayLabel.createEl("span", {
       cls: "daymark-week-weekday-short",
-      text: new Intl.DateTimeFormat(this.plugin.locale, { weekday: "short", timeZone: "UTC" }).format(toDate(date))
+      text: this.shortWeekdayNames[weekday] ?? ""
     });
     const metrics = details.createEl("span", {
       cls: `daymark-week-metrics${record ? "" : " is-empty"}`
@@ -577,8 +506,10 @@ export class DaymarkCalendarView extends ItemView {
     }
 
     row.addEventListener("click", () => {
-      this.selectedDate = date;
-      this.displayedMonth = firstOfMonth(date);
+      const state = selectCalendarDate(date);
+      this.selectedDate = state.selectedDate;
+      this.displayedMonth = state.displayedMonth;
+      this.displayedWeek = state.displayedWeek;
       this.saveViewState();
       this.render();
       void this.plugin.openOrCreateDailyNote(date);
@@ -586,10 +517,7 @@ export class DaymarkCalendarView extends ItemView {
   }
 
   private dayLabel(date: PlainDate, record: DailyRecord | null): string {
-    const label = new Intl.DateTimeFormat(this.plugin.locale, {
-      dateStyle: "full",
-      timeZone: "UTC"
-    }).format(toDate(date));
+    const label = this.fullDateFormatter.format(toDate(date));
     if (!record) return `${label}. No daily note; select to confirm creation.`;
     const checkedItems = record.totalCheckboxes > 0
       ? ` ${record.completedCheckboxes} of ${record.totalCheckboxes} items checked.`
@@ -608,56 +536,155 @@ export class DaymarkCalendarView extends ItemView {
     return null;
   }
 
-  private createFooter(parent: HTMLElement, bounds: ReturnType<typeof getPeriodBounds>): void {
-    if (!this.plugin.settings.showSelectedDayStats && !this.plugin.settings.tallyEnabled) return;
+  private createFooter(parent: HTMLElement, aggregate: PeriodAggregate, renderVersion: number): void {
+    if (!this.plugin.settings.showCalendarTotals && !this.plugin.settings.tallyEnabled) return;
 
     const footer = parent.createDiv("daymark-calendar-footer");
-    if (this.plugin.settings.showSelectedDayStats) {
-      const stats = footer.createEl("span", { cls: "daymark-calendar-selected-stats" });
-      const aggregate = this.plugin.index.aggregate(bounds);
-      if (aggregate.noteCount === 0) {
-        stats.setText("No daily notes");
+    const expanded = this.plugin.settings.tallyEnabled && this.tallyExpanded;
+    footer.toggleClass("is-expanded", expanded);
+
+    if (!expanded) {
+      if (this.plugin.settings.tallyEnabled) this.createTallyToggle(footer, false);
+      else footer.addClass("is-tally-hidden");
+      if (this.plugin.settings.showCalendarTotals) {
+        const summary = formatCalendarFooterSummary(aggregate, this.plugin.locale);
+        const stats = footer.createEl("span", { cls: "daymark-calendar-selected-stats" });
+        stats.setAttr("aria-label", summary.full);
+        const full = stats.createSpan({ cls: "daymark-calendar-selected-stats-text is-full", text: summary.full });
+        full.setAttr("aria-hidden", "true");
+        const compact = stats.createSpan({
+          cls: "daymark-calendar-selected-stats-text is-compact",
+          text: summary.compact
+        });
+        compact.setAttr("aria-hidden", "true");
       } else {
-        const parts = [
-          `${this.formatNumber(aggregate.noteCount)} ${aggregate.noteCount === 1 ? "note" : "notes"}`,
-          `${this.formatNumber(aggregate.words)} ${aggregate.words === 1 ? "word" : "words"}`
-        ];
-        if (aggregate.totalCheckboxes > 0) {
-          parts.push(`${this.formatNumber(aggregate.completedCheckboxes)}/${this.formatNumber(aggregate.totalCheckboxes)} checked`);
-        }
-        stats.setText(parts.join(" · "));
+        footer.addClass("is-stats-hidden");
       }
-    } else {
-      footer.addClass("is-stats-hidden");
+      return;
     }
 
-    if (this.plugin.settings.tallyEnabled) {
-      const tally = footer.createEl("button", { cls: "daymark-calendar-tally" });
-      const icon = tally.createEl("span", { cls: "daymark-calendar-tally-icon" });
-      setIcon(icon, "list-checks");
-      tally.createEl("span", { cls: "daymark-calendar-tally-label", text: "Tally" });
-      tally.addEventListener("click", () => {
-        void this.plugin.openTallyView().then((view) => view?.showPeriod(this.mode, this.selectedDate));
-      });
-    } else {
-      footer.addClass("is-tally-hidden");
-    }
+    const heading = footer.createDiv("daymark-tally-heading");
+    this.createTallyToggle(heading, true);
+    this.inlineTally.createReportAction(
+      heading,
+      this.mode,
+      aggregate,
+      renderVersion,
+      (version) => this.opened && version === this.renderVersion
+    );
+    const panel = footer.createDiv("daymark-tally-panel");
+    panel.id = `${this.accessibleId}-tally-panel`;
+    this.inlineTally.createMetrics(panel, aggregate);
+  }
+
+  private createTallyToggle(parent: HTMLElement, expanded: boolean): void {
+    const tally = parent.createEl("button", { cls: "daymark-calendar-tally" });
+    tally.setAttr("type", "button");
+    tally.setAttr("aria-expanded", String(expanded));
+    if (expanded) tally.setAttr("aria-controls", `${this.accessibleId}-tally-panel`);
+    tally.setAttr("aria-label", expanded ? "Collapse Tally" : "Expand Tally");
+    tally.createEl("span", { cls: "daymark-calendar-tally-label", text: "Tally" });
+    const chevron = tally.createEl("span", { cls: "daymark-calendar-tally-chevron" });
+    setIcon(chevron, expanded ? "chevron-up" : "chevron-down");
+    tally.addEventListener("click", () => {
+      this.tallyExpanded = !expanded;
+      this.saveViewState();
+      this.render();
+      if (expanded) this.contentEl.scrollTop = 0;
+    });
   }
 
   private formatNumber(value: number): string {
-    return new Intl.NumberFormat(this.plugin.locale, { maximumFractionDigits: 0 }).format(value);
+    return this.numberFormatter.format(value);
+  }
+
+  private prepareRenderContext(): void {
+    const locale = this.plugin.locale;
+    if (this.formatterLocale !== locale) {
+      this.formatterLocale = locale;
+      this.fullDateFormatter = dateTimeFormatter(locale, { dateStyle: "full", timeZone: "UTC" });
+      this.monthFormatter = dateTimeFormatter(locale, { month: "short", timeZone: "UTC" });
+      this.numberFormatter = numberFormatter(locale, { maximumFractionDigits: 0 });
+      const longWeekday = dateTimeFormatter(locale, { weekday: "long", timeZone: "UTC" });
+      const shortWeekday = dateTimeFormatter(locale, { weekday: "short", timeZone: "UTC" });
+      this.longWeekdayNames = [];
+      this.shortWeekdayNames = [];
+      for (let weekday = 0; weekday < 7; weekday += 1) {
+        const sample = new Date(Date.UTC(2026, 0, 4 + weekday));
+        this.longWeekdayNames.push(longWeekday.format(sample));
+        this.shortWeekdayNames.push(shortWeekday.format(sample));
+      }
+    }
+    this.renderSelectedIso = toIsoDate(this.selectedDate);
+    this.renderTodayIso = toIsoDate(todayPlainDate());
   }
 
   private dateIsInDisplayedMonth(date: PlainDate): boolean {
     return date.year === this.displayedMonth.year && date.month === this.displayedMonth.month;
   }
 
+  private viewportState(): CalendarViewportState {
+    return {
+      displayedMonth: this.displayedMonth,
+      displayedWeek: this.displayedWeek,
+      selectedDate: this.selectedDate
+    };
+  }
+
+  private applyViewportState(state: CalendarViewportState): void {
+    this.displayedMonth = state.displayedMonth;
+    this.displayedWeek = state.displayedWeek;
+    this.selectedDate = state.selectedDate;
+  }
+
+  showDate(date: PlainDate): void {
+    const state = selectCalendarDate(date);
+    this.applyViewportState(state);
+    this.saveViewState();
+    this.render();
+  }
+
+  showPeriod(mode: PeriodMode, anchor: PlainDate): void {
+    this.mode = mode;
+    this.displayedMonth = firstOfMonth(anchor);
+    this.displayedWeek = anchor;
+    this.tallyExpanded = true;
+    this.saveViewState();
+    this.render();
+  }
+
+  expandTally(): void {
+    if (this.tallyExpanded) return;
+    this.tallyExpanded = true;
+    this.saveViewState();
+    this.render();
+  }
+
+  async saveCurrentTallyPeriod(): Promise<void> {
+    const today = todayPlainDate();
+    this.displayedMonth = firstOfMonth(today);
+    this.displayedWeek = today;
+    this.tallyExpanded = true;
+    this.saveViewState();
+    await this.plugin.ensureTallyReady();
+    const anchor = this.mode === "week" ? this.displayedWeek : this.displayedMonth;
+    const bounds = getPeriodBounds(anchor, this.mode, this.plugin.resolveWeekStart());
+    const aggregate = this.plugin.index.aggregate(bounds);
+    this.render();
+    await this.inlineTally.savePeriod(this.mode, aggregate);
+  }
+
   private syncToFile(file: TFile | null, shouldRender = true): void {
     if (!file) return;
     const date = this.plugin.index.dateForFile(file);
     if (!date) return;
+    const displayedMonth = firstOfMonth(date);
+    if (toIsoDate(this.selectedDate) === toIsoDate(date)
+      && toIsoDate(this.displayedMonth) === toIsoDate(displayedMonth)
+      && toIsoDate(this.displayedWeek) === toIsoDate(date)) return;
     this.selectedDate = date;
-    this.displayedMonth = firstOfMonth(date);
+    this.displayedMonth = displayedMonth;
+    this.displayedWeek = date;
     this.saveViewState();
     if (shouldRender) this.render();
   }

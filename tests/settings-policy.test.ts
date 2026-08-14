@@ -7,6 +7,7 @@ import {
 import type { DaymarkSettings } from "../src/types";
 
 const settings: DaymarkSettings = {
+  settingsVersion: 1,
   journalFolder: "Journal",
   dateFormat: "YYYY-MM-DD",
   templatePath: "Shelf/Templates/Daily Note Template.md",
@@ -14,7 +15,7 @@ const settings: DaymarkSettings = {
   weekStart: "locale",
   highlightedWeekdays: [],
   showCoverPhotos: true,
-  showSelectedDayStats: true,
+  showCalendarTotals: true,
   tallyEnabled: true
 };
 
@@ -31,7 +32,7 @@ describe("settings refresh policy", () => {
     expect(settingsRequireRebuild(settings, { ...settings, weekStart: "monday" })).toBe(false);
     expect(settingsRequireRebuild(settings, { ...settings, highlightedWeekdays: [0, 6] })).toBe(false);
     expect(settingsRequireRebuild(settings, { ...settings, showCoverPhotos: false })).toBe(false);
-    expect(settingsRequireRebuild(settings, { ...settings, showSelectedDayStats: false })).toBe(false);
+    expect(settingsRequireRebuild(settings, { ...settings, showCalendarTotals: false })).toBe(false);
     expect(settingsRequireRebuild(settings, { ...settings, tallyEnabled: false })).toBe(false);
   });
 
@@ -42,7 +43,7 @@ describe("settings refresh policy", () => {
     expect(settingsAreEqual(settings, { ...settings, weekStart: "sunday" })).toBe(false);
     expect(settingsAreEqual(settings, { ...settings, highlightedWeekdays: [0, 6] })).toBe(false);
     expect(settingsAreEqual(settings, { ...settings, showCoverPhotos: false })).toBe(false);
-    expect(settingsAreEqual(settings, { ...settings, showSelectedDayStats: false })).toBe(false);
+    expect(settingsAreEqual(settings, { ...settings, showCalendarTotals: false })).toBe(false);
     expect(settingsAreEqual(settings, { ...settings, tallyEnabled: false })).toBe(false);
   });
 });

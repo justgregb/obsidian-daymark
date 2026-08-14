@@ -66,6 +66,7 @@ export interface PeriodAggregate {
 }
 
 export interface DaymarkSettings {
+  settingsVersion: number;
   journalFolder: string;
   dateFormat: string;
   templatePath: string;
@@ -73,11 +74,12 @@ export interface DaymarkSettings {
   weekStart: WeekStartSetting;
   highlightedWeekdays: Weekday[];
   showCoverPhotos: boolean;
-  showSelectedDayStats: boolean;
+  showCalendarTotals: boolean;
   tallyEnabled: boolean;
 }
 
 export const DEFAULT_SETTINGS: DaymarkSettings = {
+  settingsVersion: 1,
   journalFolder: "Journal",
   dateFormat: "YYYY-MM-DD",
   templatePath: "",
@@ -85,6 +87,6 @@ export const DEFAULT_SETTINGS: DaymarkSettings = {
   weekStart: "locale",
   highlightedWeekdays: [],
   showCoverPhotos: true,
-  showSelectedDayStats: true,
+  showCalendarTotals: true,
   tallyEnabled: true
 };

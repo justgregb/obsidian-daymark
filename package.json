@@ -5,11 +5,13 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "node esbuild.config.mjs",
-    "build": "tsc --noEmit --skipLibCheck && node esbuild.config.mjs production",
+    "build:styles": "node scripts/build-styles.mjs",
+    "dev": "npm run build:styles && node esbuild.config.mjs",
+    "build": "npm run build:styles && tsc --noEmit --skipLibCheck && node esbuild.config.mjs production",
     "lint": "eslint src tests vitest.config.ts",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:visual": "vitest run tests/visual-fixtures.test.ts",
     "version": "node version-bump.mjs"
   },
   "devDependencies": {

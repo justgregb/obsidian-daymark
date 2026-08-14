@@ -1,3 +1,4 @@
+import { dateTimeFormatter } from "./intl-cache";
 import type { PeriodBounds, PeriodMode, PlainDate, Weekday } from "./types";
 
 const DATE_TOKENS = ["YYYY", "MM", "DD"] as const;
@@ -127,7 +128,7 @@ export function dateIsWithin(date: PlainDate, bounds: PeriodBounds): boolean {
 }
 
 function formatDate(date: PlainDate, options: Intl.DateTimeFormatOptions, locale?: string): string {
-  return new Intl.DateTimeFormat(locale, { ...options, timeZone: "UTC" }).format(toDate(date));
+  return dateTimeFormatter(locale, { ...options, timeZone: "UTC" }).format(toDate(date));
 }
 
 export function formatPeriodTitle(bounds: PeriodBounds, mode: PeriodMode, locale?: string): string {
@@ -137,18 +138,19 @@ export function formatPeriodTitle(bounds: PeriodBounds, mode: PeriodMode, locale
   }
 
   const last = addDays(bounds.end, -1);
+  const compactYear = `’${String(last.year).slice(-2)}`;
   if (bounds.start.year !== last.year) {
-    const start = formatDate(bounds.start, { month: "short", day: "numeric", year: "numeric" }, locale);
-    const end = formatDate(last, { month: "short", day: "numeric", year: "numeric" }, locale);
-    return `${start} – ${end}`;
+    const start = formatDate(bounds.start, { month: "short", day: "numeric" }, locale);
+    const end = formatDate(last, { month: "short", day: "numeric" }, locale);
+    return `${start}–${end} ${compactYear}`;
   }
   if (bounds.start.month !== last.month) {
     const start = formatDate(bounds.start, { month: "short", day: "numeric" }, locale);
-    const end = formatDate(last, { month: "short", day: "numeric", year: "numeric" }, locale);
-    return `${start} – ${end}`;
+    const end = formatDate(last, { month: "short", day: "numeric" }, locale);
+    return `${start}–${end} ${compactYear}`;
   }
   const month = formatDate(bounds.start, { month: "short" }, locale);
-  return `${month} ${bounds.start.day}–${last.day}, ${last.year}`;
+  return `${month} ${bounds.start.day}–${last.day} ${compactYear}`;
 }
 
 export function formatSourceDate(date: PlainDate, locale?: string): string {

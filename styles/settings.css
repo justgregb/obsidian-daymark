@@ -1,0 +1,91 @@
+.daymark-settings-intro {
+  line-height: var(--line-height-normal);
+  margin-bottom: var(--size-4-6);
+  max-width: 68ch;
+}
+
+.daymark-settings-section {
+  margin: 0 0 var(--size-4-8);
+}
+
+.daymark-settings-section-title {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  font-weight: var(--font-semibold);
+  letter-spacing: 0.06em;
+  margin: 0 0 var(--size-4-1);
+  text-transform: uppercase;
+}
+
+.daymark-settings-section-description {
+  line-height: var(--line-height-normal);
+  margin: 0 0 var(--size-4-3);
+  max-width: 68ch;
+}
+
+.daymark-settings-card {
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-l);
+  overflow: hidden;
+  padding: 0 var(--size-4-4);
+}
+
+.daymark-settings-card > .setting-item {
+  padding: var(--size-4-4) var(--size-4-1);
+}
+
+.daymark-settings-card .setting-item-description {
+  line-height: var(--line-height-normal);
+  max-width: 58ch;
+}
+
+.daymark-settings-card input[type="text"] {
+  max-width: 100%;
+  width: clamp(220px, 32vw, 320px);
+}
+
+.daymark-settings-card select {
+  max-width: 100%;
+}
+
+.daymark-settings-card > .setting-item:first-child {
+  border-top: 0;
+}
+
+.daymark-weekday-toggles {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(7, 30px);
+}
+
+.daymark-settings-card .daymark-weekday-button {
+  background: transparent;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  box-shadow: none;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  font-weight: var(--font-medium);
+  height: 30px;
+  min-height: 30px;
+  padding: 0;
+  width: 30px;
+}
+
+.daymark-settings-card .daymark-weekday-button:hover {
+  background: var(--background-modifier-hover);
+  border-color: var(--background-modifier-border-hover);
+  color: var(--text-normal);
+}
+
+.daymark-settings-card .daymark-weekday-button.is-active {
+  background: var(--interactive-accent);
+  border-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+.daymark-settings-card .daymark-weekday-button:focus-visible {
+  box-shadow: 0 0 0 2px var(--background-modifier-border-focus);
+}
+
