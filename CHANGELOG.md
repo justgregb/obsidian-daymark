@@ -2,6 +2,7 @@
 
 ## 0.1.0 — 2026-08-12
 
+- Prepared Daymark for Obsidian review with atomic report updates, sidebar-state preservation across reloads, compatibility-safe leaf revealing, native settings headings, production minification, official lint checks, and complete runtime-asset verification.
 - Preserved cached Week, Month, and Year totals across unrelated note edits; reduced full-index date discovery, Year activity allocations, date-comparison allocations, and additional-folder prose intermediates without changing results or UI behavior.
 - Reduced repeated report grouping and Year-view activity passes, reused shared date formatting, and simplified report mode metadata without changing rendered reports or Calendar behavior.
 - Redesigned saved Tally reports with a natural at-a-glance summary, coverage and checked progress, a linked writing highlight, chronological Days/Weeks/Months activity and Tally tables, and clear dashes instead of invented zeroes; added an invisible version marker while preserving explicit zero values, legacy report recognition, and overwrite protection.

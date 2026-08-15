@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import moment from "moment";
+import { moment } from "obsidian";
 import { dateFromDailyNotePath, pathIsWithinFolder } from "../src/discovery";
 
 function parseMomentDate(value: string, format: string) {

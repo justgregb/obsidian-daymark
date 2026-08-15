@@ -266,7 +266,7 @@ export class DaymarkCalendarView extends ItemView {
   private createWeekdays(parent: HTMLElement, weekStart: Weekday): void {
     const weekdays = parent.createDiv("daymark-calendar-weekdays");
     for (const weekday of calendarWeekdays(weekStart)) {
-      weekdays.createEl("span", {
+      weekdays.createSpan({
         text: this.shortWeekdayNames[weekday]?.toLocaleUpperCase(this.plugin.locale) ?? ""
       });
     }
@@ -426,7 +426,7 @@ export class DaymarkCalendarView extends ItemView {
     button.dataset.date = isoDate;
     button.setAttr("role", "gridcell");
     button.setAttr("aria-selected", String(selected));
-    const label = button.createEl("span", {
+    const label = button.createSpan({
       cls: "daymark-visually-hidden",
       text: this.dayLabel(date, record)
     });
@@ -440,7 +440,7 @@ export class DaymarkCalendarView extends ItemView {
       image.setAttr("loading", "lazy");
       image.src = this.app.vault.getResourcePath(cover);
     }
-    button.createEl("span", { cls: "daymark-calendar-day-number", text: String(date.day) });
+    button.createSpan({ cls: "daymark-calendar-day-number", text: String(date.day) });
     button.addEventListener("click", () => {
       const state = selectCalendarDate(date);
       this.selectedDate = state.selectedDate;
@@ -469,7 +469,7 @@ export class DaymarkCalendarView extends ItemView {
     ].filter(Boolean).join(" ");
     const row = parent.createEl("button", { cls: classes });
     row.dataset.date = isoDate;
-    const label = row.createEl("span", {
+    const label = row.createSpan({
       cls: "daymark-visually-hidden",
       text: this.dayLabel(date, record)
     });
@@ -486,27 +486,27 @@ export class DaymarkCalendarView extends ItemView {
       image.setAttr("loading", "lazy");
       image.src = this.app.vault.getResourcePath(cover);
     }
-    tile.createEl("span", { cls: "daymark-week-date-number", text: String(date.day) });
+    tile.createSpan({ cls: "daymark-week-date-number", text: String(date.day) });
 
     const details = row.createSpan("daymark-week-details");
-    const weekdayLabel = details.createEl("span", { cls: "daymark-week-weekday" });
-    weekdayLabel.createEl("span", {
+    const weekdayLabel = details.createSpan({ cls: "daymark-week-weekday" });
+    weekdayLabel.createSpan({
       cls: "daymark-week-weekday-long",
       text: this.longWeekdayNames[weekday] ?? ""
     });
-    weekdayLabel.createEl("span", {
+    weekdayLabel.createSpan({
       cls: "daymark-week-weekday-short",
       text: this.shortWeekdayNames[weekday] ?? ""
     });
-    const metrics = details.createEl("span", {
+    const metrics = details.createSpan({
       cls: `daymark-week-metrics${record ? "" : " is-empty"}`
     });
     if (record) {
-      metrics.createEl("span", {
+      metrics.createSpan({
         text: `${this.formatNumber(record.words)} ${record.words === 1 ? "word" : "words"}`
       });
       if (record.totalCheckboxes > 0) {
-        metrics.createEl("span", {
+        metrics.createSpan({
           text: `${this.formatNumber(record.completedCheckboxes)}/${this.formatNumber(record.totalCheckboxes)} checked`
         });
       }
@@ -557,7 +557,7 @@ export class DaymarkCalendarView extends ItemView {
       else footer.addClass("is-tally-hidden");
       if (this.plugin.settings.showCalendarTotals) {
         const summary = formatCalendarFooterSummary(aggregate, this.plugin.locale);
-        const stats = footer.createEl("span", { cls: "daymark-calendar-selected-stats" });
+        const stats = footer.createSpan({ cls: "daymark-calendar-selected-stats" });
         stats.setAttr("aria-label", summary.full);
         const full = stats.createSpan({ cls: "daymark-calendar-selected-stats-text is-full", text: summary.full });
         full.setAttr("aria-hidden", "true");
@@ -592,8 +592,8 @@ export class DaymarkCalendarView extends ItemView {
     tally.setAttr("aria-expanded", String(expanded));
     if (expanded) tally.setAttr("aria-controls", `${this.accessibleId}-tally-panel`);
     tally.setAttr("aria-label", expanded ? "Collapse Tally" : "Expand Tally");
-    tally.createEl("span", { cls: "daymark-calendar-tally-label", text: "Tally" });
-    const chevron = tally.createEl("span", { cls: "daymark-calendar-tally-chevron" });
+    tally.createSpan({ cls: "daymark-calendar-tally-label", text: "Tally" });
+    const chevron = tally.createSpan({ cls: "daymark-calendar-tally-chevron" });
     setIcon(chevron, expanded ? "chevron-up" : "chevron-down");
     tally.addEventListener("click", () => {
       this.tallyExpanded = !expanded;

@@ -39,7 +39,10 @@ function createSettingsSection(
   description: string
 ): HTMLElement {
   const section = parent.createDiv("daymark-settings-section");
-  section.createEl("h3", { cls: "daymark-settings-section-title", text: title });
+  new Setting(section)
+    .setName(title)
+    .setHeading()
+    .setClass("daymark-settings-section-title");
   section.createEl("p", {
     cls: "setting-item-description daymark-settings-section-description",
     text: description
@@ -106,7 +109,6 @@ export class DaymarkSettingTab extends PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
 
-    containerEl.createEl("h2", { text: "Daymark" });
     containerEl.createEl("p", {
       cls: "setting-item-description daymark-settings-intro",
       text: "Make Daymark yours. Choose where your daily notes live, how the calendar feels, and whether Tally summarizes them. Everything stays inside this vault."
@@ -192,7 +194,7 @@ export class DaymarkSettingTab extends PluginSettingTab {
       formatSetting.descEl.toggleClass("daymark-setting-error", !valid);
       preview.empty();
       preview.appendText(valid ? "Today would be saved as: " : "Add a year, month, and day: ");
-      preview.createEl("span", {
+      preview.createSpan({
         cls: valid ? "daymark-setting-preview-value" : "daymark-setting-preview-invalid",
         text: format.length > 0 ? previewObsidianDateFormat(format) : "Empty"
       });
@@ -301,7 +303,7 @@ export class DaymarkSettingTab extends PluginSettingTab {
 
     new Setting(tallySettings)
       .setName("Show Tally")
-      .setDesc("Let the calendar unfold into journal totals for the period on screen. A local Markdown report is created only when you choose Save.")
+      .setDesc("Let the calendar unfold into journal totals for the period on screen. A local Markdown report is created only when you save it.")
       .addToggle((toggle) => {
         toggle
           .setValue(this.plugin.settings.tallyEnabled)
@@ -313,7 +315,7 @@ export class DaymarkSettingTab extends PluginSettingTab {
     if (this.plugin.settings.tallyEnabled) {
       new Setting(tallySettings)
         .setName("Additional writing folder")
-        .setDesc("Optional. Pick one other folder, such as Desk/Longform, to show its all-time word count below your journal totals. It stays separate and is never added to saved Tally reports.")
+        .setDesc("Optional. Pick one other folder to show its all-time word count below your journal totals. It stays separate and is never added to saved Tally reports.")
         .addText((text) => {
           let pendingValue = this.plugin.settings.additionalWordFolder;
           const commit = (): void => {

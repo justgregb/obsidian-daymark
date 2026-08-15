@@ -1,10 +1,9 @@
-import eslint from "@eslint/js";
+import obsidianmd from "eslint-plugin-obsidianmd";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
   { ignores: ["main.js", "node_modules/**"] },
-  eslint.configs.recommended,
-  ...tseslint.configs.recommended,
+  ...obsidianmd.configs.recommended,
   {
     files: ["**/*.ts"],
     languageOptions: {
@@ -16,7 +15,36 @@ export default tseslint.config(
     rules: {
       "@typescript-eslint/consistent-type-imports": "error",
       "@typescript-eslint/no-floating-promises": "error",
-      "@typescript-eslint/no-misused-promises": "error"
+      "@typescript-eslint/no-misused-promises": "error",
+      "obsidianmd/ui/sentence-case": [
+        "warn",
+        {
+          brands: ["Daymark", "Markdown", "Obsidian", "Tally"],
+          enforceCamelCaseLower: true,
+          ignoreRegex: ["^format guide$", "^[YMDHms\\-/. :]+$", "^[^\\s]+/[^\\s]+(?:\\.md)?$"]
+        }
+      ]
+    }
+  },
+  {
+    files: ["*.mjs", "scripts/**/*.mjs", "tests/**/*.ts", "vitest.config.ts"],
+    rules: {
+      "obsidianmd/no-nodejs-modules": "off"
+    }
+  },
+  {
+    files: ["src/settings.ts"],
+    rules: {
+      "@typescript-eslint/no-deprecated": "off",
+      "obsidianmd/settings-tab/prefer-setting-definitions": "off",
+      "obsidianmd/settings-tab/prefer-update-over-display": "off"
+    }
+  },
+  {
+    files: ["tests/obsidian-mock.ts"],
+    rules: {
+      "@typescript-eslint/no-restricted-imports": "off",
+      "import/no-extraneous-dependencies": "off"
     }
   }
 );

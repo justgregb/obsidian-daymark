@@ -14,6 +14,7 @@ const context = await esbuild.context({
   platform: "browser",
   sourcemap: production ? false : "inline",
   target: "es2018",
+  minify: production,
   treeShaking: true
 });
 

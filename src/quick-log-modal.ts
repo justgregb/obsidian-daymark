@@ -12,7 +12,7 @@ class QuickLogModal extends Modal {
 
   override onOpen(): void {
     this.modalEl.addClass("daymark-quick-log-modal");
-    this.titleEl.setText("Quick Log");
+    this.titleEl.setText("Quick log");
     this.contentEl.createEl("p", {
       cls: "daymark-quick-log-description",
       text: "Capture a timestamped note into today."
@@ -21,7 +21,7 @@ class QuickLogModal extends Modal {
     const field = this.contentEl.createDiv("daymark-quick-log-field");
     const input = new TextComponent(field)
       .setPlaceholder("What do you want to remember?");
-    input.inputEl.setAttr("aria-label", "Quick Log entry");
+    input.inputEl.setAttr("aria-label", "Quick log entry");
     input.inputEl.setAttr("autocomplete", "off");
 
     const actions = this.contentEl.createDiv("daymark-quick-log-actions");

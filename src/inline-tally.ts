@@ -21,7 +21,7 @@ export class InlineTally {
 
   createMetrics(parent: HTMLElement, aggregate: PeriodAggregate): void {
     if (aggregate.noteCount === 0) {
-      parent.createEl("p", { cls: "daymark-tally-empty", text: "Nothing to tally in this period." });
+      parent.createEl("p", { cls: "daymark-tally-empty", text: "No activity in this period." });
     } else {
       const metrics = parent.createDiv("daymark-tally-metrics");
       this.createMetric(

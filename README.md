@@ -6,7 +6,7 @@ There are no accounts, analytics, or network requests. Your journal stays in ord
 
 ## Calendar
 
-Open Daymark from the ribbon or run **Daymark: Open Daymark**.
+Open Daymark from the ribbon or run **Daymark: Open calendar**.
 
 - Switch between Week, Month, and Year.
 - See which days already have notes, with optional image covers.
@@ -30,7 +30,7 @@ New notes can use a Markdown template with these variables:
 
 ## Quick Log
 
-Run **Daymark: Quick Log** to add a short, timestamped thought to today's note without changing views:
+Run **Daymark: Quick log** to add a short, timestamped thought to today's note without changing views:
 
 ```markdown
 `09:05` — A thought worth keeping
@@ -77,6 +77,8 @@ Daymark counts journal prose while ignoring frontmatter, code, URLs, images, Mar
 
 3. Copy the three downloaded files into that folder.
 4. Reload Obsidian, then enable **Daymark** under **Settings → Community plugins**.
+
+All three files are required. If `styles.css` is missing, Daymark will load without its layout and visual styling.
 
 ### Build from source
 

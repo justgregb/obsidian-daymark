@@ -23,7 +23,7 @@ function cachedValue<T>(cache: Map<string, T>, key: string, create: () => T): T 
   const value = create();
   cache.set(key, value);
   while (cache.size > MAX_CACHE_ENTRIES) {
-    const oldest = cache.keys().next().value as string | undefined;
+    const oldest = cache.keys().next().value;
     if (oldest === undefined) break;
     cache.delete(oldest);
   }

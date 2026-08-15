@@ -62,7 +62,7 @@ export class DaymarkStore {
     const value = aggregateRecords(this.records.values(), bounds);
     this.aggregateCache.set(key, { bounds, value });
     while (this.aggregateCache.size > MAX_AGGREGATE_CACHE_ENTRIES) {
-      const oldest = this.aggregateCache.keys().next().value as string | undefined;
+      const oldest = this.aggregateCache.keys().next().value;
       if (oldest === undefined) break;
       this.aggregateCache.delete(oldest);
     }
