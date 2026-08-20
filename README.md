@@ -121,9 +121,13 @@ After the build succeeds, copy `main.js`, `manifest.json`, and `styles.css` into
 - Obsidian 1.4.10 or newer
 - Desktop and mobile
 
+## Support
+
+Daymark is free and open source. If it makes journaling a little nicer, you can [buy me a coffee on Ko-fi](https://ko-fi.com/iamgregb). ☕️
+
 ## Release status
 
-Version `0.2.1` is available as a manual GitHub release. Daymark has not yet been submitted to Obsidian's community plugin directory.
+Version `0.2.2` is available as a manual GitHub release. Daymark has not yet been submitted to Obsidian's community plugin directory.
 
 ## License
 

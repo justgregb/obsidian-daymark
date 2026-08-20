@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.2 — 2026-08-20
+
+- Added an optional Ko-fi support link through Obsidian's standard funding field and the README.
+
 ## 0.2.1 — 2026-08-20
 
 - Kept the period switcher fixed across Week, Month, and Year by giving Daymark's actual scroll container a stable scrollbar gutter, including narrow and overflow-sensitive sidebar layouts.
