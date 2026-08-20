@@ -1,7 +1,7 @@
 {
   "id": "daymark",
   "name": "Daymark",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "minAppVersion": "1.4.10",
   "description": "A local-first daily journal calendar with Markdown activity and Tally summaries.",
   "author": "Greg B.",

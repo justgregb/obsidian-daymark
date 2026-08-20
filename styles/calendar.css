@@ -3,17 +3,8 @@
   overflow: hidden !important;
 }
 
-.daymark-calendar-container > .view-content {
-  min-height: 0;
-}
-
-.daymark-calendar-container > .view-content:not(.is-tally-expanded) {
+.daymark-calendar-view:not(.is-tally-expanded) {
   overflow: hidden !important;
-}
-
-.daymark-calendar-container > .view-content.is-tally-expanded {
-  overflow-x: hidden !important;
-  overflow-y: auto !important;
 }
 
 .daymark-calendar-view {
@@ -208,9 +199,10 @@
 }
 
 .daymark-calendar-view.is-tally-expanded {
-  overflow-x: hidden;
-  overflow-y: auto;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
   overscroll-behavior: contain;
+  scrollbar-gutter: stable;
 }
 
 .daymark-calendar-view .daymark-calendar-nav:hover {

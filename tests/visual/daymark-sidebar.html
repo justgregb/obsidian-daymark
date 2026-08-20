@@ -12,26 +12,27 @@
   <script>
     const widths = [285, 320, 420];
     const themes = ["light", "dark"];
+    const modes = ["week", "month", "year"];
     const states = ["collapsed", "expanded", "long-title", "empty"];
     const titles = {
-      collapsed: "AUG 2026",
-      expanded: "AUG 2026",
-      "long-title": "27 JUL–2 AUG ’26",
-      empty: "SEP 2026"
+      week: "AUG 17–23 ’26",
+      month: "AUG 2026",
+      year: "2026"
     };
     const root = document.querySelector("#fixtures");
-    for (const width of widths) for (const theme of themes) for (const state of states) {
+    for (const width of widths) for (const theme of themes) for (const mode of modes) for (const state of states) {
       const fixture = document.createElement("section");
       fixture.className = `fixture theme-${theme}`;
       fixture.style.width = `${width}px`;
       fixture.dataset.width = String(width);
       fixture.dataset.theme = theme;
+      fixture.dataset.mode = mode;
       fixture.dataset.state = state;
       fixture.innerHTML = `
-        <p class="fixture-label">${width}px · ${theme} · ${state}</p>
-        <div class="daymark-calendar-view is-month-view has-footer ${state === "expanded" || state === "empty" ? "is-tally-expanded" : ""}">
+        <p class="fixture-label">${width}px · ${theme} · ${mode} · ${state}</p>
+        <div class="daymark-calendar-view is-${mode}-view has-footer ${state === "expanded" || state === "empty" ? "is-tally-expanded" : ""}">
           <div class="daymark-calendar-header">
-            <div class="daymark-calendar-title">${titles[state]}</div>
+            <div class="daymark-calendar-title">${state === "long-title" ? "27 JUL–2 AUG ’26" : titles[mode]}</div>
             <div class="daymark-calendar-header-controls"><button>▣</button><button>‹</button><button>◷</button><button>›</button></div>
           </div>
           <div class="daymark-calendar-body"><div class="daymark-month-section"><div class="daymark-calendar-weekdays"><span>MON</span><span>TUE</span><span>WED</span><span>THU</span><span>FRI</span><span>SAT</span><span>SUN</span></div></div></div>

@@ -68,6 +68,17 @@ describe("responsive visual fixture matrix", () => {
     expect(responsiveStyles).not.toContain("height: 28px;");
   });
 
+  it("keeps the period switcher horizontally stable when period overflow changes", () => {
+    expect(fixture).toContain('const modes = ["week", "month", "year"]');
+    expect(fixture).toContain("fixture.dataset.mode = mode;");
+    expect(calendarStyles).toMatch(
+      /\.daymark-calendar-view\.is-tally-expanded \{[^}]*overflow-y: auto !important;[^}]*scrollbar-gutter: stable;/s
+    );
+    expect(calendarStyles).not.toContain(
+      ".daymark-calendar-container > .view-content.is-tally-expanded"
+    );
+  });
+
   it("keeps the Tally disclosure in the left-hand slot in both states", () => {
     expect(calendarStyles).toMatch(
       /\.daymark-calendar-footer \{[^}]*grid-template-columns: auto minmax\(0, 1fr\);/s

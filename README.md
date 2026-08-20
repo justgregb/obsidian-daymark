@@ -117,7 +117,7 @@ After the build succeeds, copy `main.js`, `manifest.json`, and `styles.css` into
 
 ## Release status
 
-Version `0.2.0` is available as a manual GitHub release. Daymark has not yet been submitted to Obsidian's community plugin directory.
+Version `0.2.1` is available as a manual GitHub release. Daymark has not yet been submitted to Obsidian's community plugin directory.
 
 ## License
 

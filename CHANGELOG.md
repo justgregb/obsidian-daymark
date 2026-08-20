@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.1 — 2026-08-20
+
+- Kept the period switcher fixed across Week, Month, and Year by giving Daymark's actual scroll container a stable scrollbar gutter, including narrow and overflow-sensitive sidebar layouts.
+
 ## 0.2.0 — 2026-08-20
 
 - Reduced Daymark's runtime and rendering overhead by minifying the generated stylesheet under a 128 KB release-asset budget, caching saved-report state and discovered hashtags, skipping inactive additional-folder scans, consolidating settings helpers and responsive rules, and removing repeated Calendar class-list allocations.
