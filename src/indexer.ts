@@ -25,6 +25,14 @@ export class DaymarkIndex {
     return this.store.getByIsoDate(toIsoDate(date));
   }
 
+  get isReady(): boolean {
+    return this.ready;
+  }
+
+  knownTags(): readonly string[] {
+    return this.store.knownTags();
+  }
+
   async ensureReady(): Promise<void> {
     if (!this.ready) await this.rebuild();
   }

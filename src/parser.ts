@@ -1,4 +1,5 @@
 import { toIsoDate } from "./date";
+import { isSupportedImagePath } from "./cover";
 import { wordSegmenter } from "./intl-cache";
 import type { DailyRecord, PlainDate, TaggedTaskSource } from "./types";
 
@@ -8,6 +9,7 @@ const TALLY_NUMBER_PATTERN = /(?:^|[\s([])(\d+(?:\.\d+)?)(?=$|[\s)\].;:!?…–�
 const TAG_PATTERN = /(?:^|\s)#([\p{L}\p{N}_/-]+)/gu;
 
 interface ParsedTask {
+  completed: boolean;
   text: string;
   value: number | null;
   tags: string[];
@@ -57,25 +59,57 @@ function markdownContentLines(content: string): MarkdownContentLine[] {
   return contentLines;
 }
 
-function parseCompletedTask(line: string): ParsedTask | null {
+function parseTask(line: string): ParsedTask | null {
   const match = TASK_PATTERN.exec(line);
-  if (!match || (match[1] !== "x" && match[1] !== "X")) return null;
+  if (!match) return null;
 
   const text = match[2]?.trim() ?? "";
   const searchable = stripInlineCode(text);
-  const numberMatch = TALLY_NUMBER_PATTERN.exec(searchable);
-  const textWithoutTags = searchable.replace(TAG_PATTERN, " ");
-  const value = numberMatch ? Number(numberMatch[1]) : /\d/u.test(textWithoutTags) ? null : 1;
   const tags = new Set<string>();
   for (const tagMatch of searchable.matchAll(TAG_PATTERN)) {
     const tag = tagMatch[1]?.toLocaleLowerCase();
     if (tag) tags.add(tag);
   }
+  const completed = match[1] === "x" || match[1] === "X";
+  const numberMatch = completed ? TALLY_NUMBER_PATTERN.exec(searchable) : null;
+  const textWithoutTags = searchable.replace(TAG_PATTERN, " ");
+  const value = completed
+    ? numberMatch ? Number(numberMatch[1]) : /\d/u.test(textWithoutTags) ? null : 1
+    : null;
   return {
+    completed,
     text,
     value: value !== null && Number.isFinite(value) ? value : null,
     tags: [...tags]
   };
+}
+
+function localImageTarget(value: string): string | null {
+  const target = value.trim();
+  if (/^(?:https?:|data:|app:)/iu.test(target)) return null;
+  return target.length > 0 && isSupportedImagePath(target) ? target : null;
+}
+
+function countPhotosInContentLines(lines: readonly MarkdownContentLine[]): number {
+  const markdown = lines.map((line) => line.text).join("\n");
+  const visible = stripInlineCode(markdown.replace(/<!--[\s\S]*?-->/gu, " "));
+  let photos = 0;
+  for (const match of visible.matchAll(/!\[\[([^\]]+)\]\]/gu)) {
+    const target = match[1]?.split("|", 1)[0] ?? "";
+    if (localImageTarget(target)) photos += 1;
+  }
+  for (const match of visible.matchAll(/!\[[^\]]*\]\(([^)\n]+)\)/gu)) {
+    const destination = match[1]?.trim() ?? "";
+    const target = destination.startsWith("<")
+      ? destination.slice(1, destination.indexOf(">") >= 0 ? destination.indexOf(">") : undefined)
+      : destination.match(/^\S+/u)?.[0] ?? "";
+    if (localImageTarget(target)) photos += 1;
+  }
+  return photos;
+}
+
+export function countMarkdownPhotos(content: string): number {
+  return countPhotosInContentLines(markdownContentLines(content));
 }
 
 function markdownToVisibleProse(value: string): string {
@@ -128,14 +162,17 @@ export function parseDailyNote(
   const taggedTasks: TaggedTaskSource[] = [];
   let totalCheckboxes = 0;
   let completedCheckboxes = 0;
+  const contentLines = markdownContentLines(content);
 
-  for (const { text: line, line: index } of markdownContentLines(content)) {
+  for (const { text: line, line: index } of contentLines) {
 
-    if (TASK_PATTERN.test(line)) totalCheckboxes += 1;
-    const task = parseCompletedTask(line);
+    const task = parseTask(line);
     if (task) {
-      completedCheckboxes += 1;
-      if (task.value !== null) {
+      if (task.tags.length === 0) {
+        totalCheckboxes += 1;
+        if (task.completed) completedCheckboxes += 1;
+      }
+      if (task.completed && task.value !== null) {
         for (const tag of task.tags) {
           taggedTasks.push({ tag, value: task.value, text: task.text, line: index });
         }
@@ -152,6 +189,7 @@ export function parseDailyNote(
     date,
     isoDate: toIsoDate(date),
     words: countWords(proseLines.join("\n"), locale),
+    photos: countPhotosInContentLines(contentLines),
     totalCheckboxes,
     completedCheckboxes,
     taggedTasks

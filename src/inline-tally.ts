@@ -1,7 +1,7 @@
 import { Notice, setIcon, TFile } from "obsidian";
 import { additionalWordFolderLabel } from "./additional-word-index";
 import { periodDayCount } from "./calendar-summary";
-import { formatTagLabel } from "./format";
+import { resolveTagLabel, resolveTallyMetricLabel, sortByResolvedTagLabel } from "./format";
 import { numberFormatter } from "./intl-cache";
 import { openInNewTab } from "./open-summary";
 import type DaymarkPlugin from "./main";
@@ -24,12 +24,14 @@ export class InlineTally {
       parent.createEl("p", { cls: "daymark-tally-empty", text: "No activity in this period." });
     } else {
       const metrics = parent.createDiv("daymark-tally-metrics");
+      const metricLabels = this.plugin.settings.tallyMetricLabels;
       this.createMetric(
         metrics,
-        "Daily notes",
+        resolveTallyMetricLabel("dailyNotes", metricLabels),
         `${this.formatNumber(aggregate.noteCount)} / ${this.formatNumber(periodDayCount(aggregate.bounds))}`
       );
-      this.createMetric(metrics, "Words", aggregate.words);
+      this.createMetric(metrics, resolveTallyMetricLabel("words", metricLabels), aggregate.words);
+      this.createMetric(metrics, resolveTallyMetricLabel("photos", metricLabels), aggregate.photos);
       if (aggregate.totalCheckboxes > 0) {
         this.createMetric(
           metrics,
@@ -37,8 +39,15 @@ export class InlineTally {
           `${this.formatNumber(aggregate.completedCheckboxes)} / ${this.formatNumber(aggregate.totalCheckboxes)}`
         );
       }
-      for (const tag of aggregate.tags) {
-        this.createMetric(metrics, formatTagLabel(tag.tag, this.plugin.locale), tag.total);
+      const labels = this.plugin.settings.tallyTagLabels;
+      const tags = sortByResolvedTagLabel(aggregate.tags, labels, this.plugin.locale);
+      for (const [index, tag] of tags.entries()) {
+        this.createMetric(
+          metrics,
+          resolveTagLabel(tag.tag, labels, this.plugin.locale),
+          tag.total,
+          index === 0 ? "daymark-tally-tag-start" : undefined
+        );
       }
     }
 

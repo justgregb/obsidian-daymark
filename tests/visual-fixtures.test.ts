@@ -2,8 +2,11 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const fixture = readFileSync(new URL("visual/daymark-sidebar.html", import.meta.url), "utf8");
+const calendarViewSource = readFileSync(new URL("../src/calendar-view.ts", import.meta.url), "utf8");
 const calendarStyles = readFileSync(new URL("../styles/calendar.css", import.meta.url), "utf8");
 const responsiveStyles = readFileSync(new URL("../styles/responsive.css", import.meta.url), "utf8");
+const settingsSource = readFileSync(new URL("../src/settings.ts", import.meta.url), "utf8");
+const settingsStyles = readFileSync(new URL("../styles/settings.css", import.meta.url), "utf8");
 
 describe("responsive visual fixture matrix", () => {
   it("includes narrow, compact, and normal sidebar widths", () => {
@@ -47,6 +50,12 @@ describe("responsive visual fixture matrix", () => {
     expect(calendarStyles).toMatch(
       /\.daymark-year-selected-day \{[^}]*font-variant-numeric: tabular-nums;[^}]*letter-spacing: 0;/s
     );
+  });
+
+  it("does not advertise or intercept internal calendar navigation keys", () => {
+    expect(calendarViewSource).not.toContain("aria-keyshortcuts");
+    expect(calendarViewSource).not.toContain('addEventListener("keydown"');
+    expect(calendarViewSource).not.toContain("installRovingNavigation");
   });
 
   it("keeps read-only Tally totals visually inert", () => {
@@ -97,6 +106,7 @@ describe("responsive visual fixture matrix", () => {
     expect(fixture).toContain(">Daily notes</span>");
     expect(fixture).toContain(">Checked items</span>");
     expect(fixture).toContain("daymark-tally-metric daymark-tally-additional-source");
+    expect(calendarStyles).toContain(".daymark-tally-tag-start");
     expect(responsiveStyles).toContain(".daymark-calendar-selected-stats-text.is-compact");
     expect(responsiveStyles).toContain(".daymark-tally-report-label");
   });
@@ -111,5 +121,24 @@ describe("responsive visual fixture matrix", () => {
     expect(calendarStyles).toMatch(
       /\.daymark-tally-metric-value\s*\{[^}]*max-width: 55%;[^}]*overflow: hidden;[^}]*text-overflow: ellipsis;/u
     );
+  });
+
+  it("keeps configurable Tally labels usable in narrow Settings layouts", () => {
+    expect(settingsSource).toContain("Display names");
+    expect(settingsSource).toContain("Journal totals");
+    expect(settingsSource).toContain("Hashtag tallies");
+    expect(settingsSource).toContain("text.inputEl.maxLength = 80");
+    expect(settingsSource).toContain("daymark-tally-label-core-row");
+    expect(settingsSource).toContain("daymark-setting-toggle");
+    expect(settingsStyles).toContain(".daymark-tally-label-group");
+    expect(settingsStyles).toContain(".daymark-tally-label-row");
+    expect(settingsStyles).toMatch(
+      /\.daymark-tally-label-row \.setting-item-name \{[^}]*overflow: hidden;[^}]*text-overflow: ellipsis;/s
+    );
+    expect(settingsStyles).toMatch(
+      /\.daymark-settings-card input\[type="text"\] \{[^}]*max-width: 100%;/s
+    );
+    expect(responsiveStyles).toContain(".daymark-tally-label-group-rows > .setting-item");
+    expect(responsiveStyles).toContain(".daymark-settings-card > .daymark-setting-toggle");
   });
 });

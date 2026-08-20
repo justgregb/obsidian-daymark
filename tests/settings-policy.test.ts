@@ -7,7 +7,7 @@ import {
 import type { DaymarkSettings } from "../src/types";
 
 const settings: DaymarkSettings = {
-  settingsVersion: 1,
+  settingsVersion: 3,
   journalFolder: "Journal",
   dateFormat: "YYYY-MM-DD",
   templatePath: "Shelf/Templates/Daily Note Template.md",
@@ -16,7 +16,9 @@ const settings: DaymarkSettings = {
   highlightedWeekdays: [],
   showCoverPhotos: true,
   showCalendarTotals: true,
-  tallyEnabled: true
+  tallyEnabled: true,
+  tallyMetricLabels: {},
+  tallyTagLabels: {}
 };
 
 describe("settings refresh policy", () => {
@@ -34,6 +36,26 @@ describe("settings refresh policy", () => {
     expect(settingsRequireRebuild(settings, { ...settings, showCoverPhotos: false })).toBe(false);
     expect(settingsRequireRebuild(settings, { ...settings, showCalendarTotals: false })).toBe(false);
     expect(settingsRequireRebuild(settings, { ...settings, tallyEnabled: false })).toBe(false);
+    expect(settingsRequireRebuild(settings, {
+      ...settings,
+      tallyTagLabels: { running: "Kilometres run" }
+    })).toBe(false);
+    expect(settingsRequireRebuild(settings, {
+      ...settings,
+      tallyMetricLabels: { photos: "Images" }
+    })).toBe(false);
+    expect(settingsRequireAdditionalWordRebuild(settings, {
+      ...settings,
+      tallyTagLabels: { running: "Kilometres run" }
+    })).toBe(false);
+    expect(settingsRequireAdditionalWordRebuild(
+      { ...settings, tallyEnabled: false, additionalWordFolder: "Desk/Longform" },
+      { ...settings, tallyEnabled: true, additionalWordFolder: "Desk/Longform" }
+    )).toBe(true);
+    expect(settingsRequireAdditionalWordRebuild(
+      { ...settings, tallyEnabled: false },
+      { ...settings, tallyEnabled: false, additionalWordFolder: "Desk/Longform" }
+    )).toBe(false);
   });
 
   it("recognizes no-op updates", () => {
@@ -45,5 +67,17 @@ describe("settings refresh policy", () => {
     expect(settingsAreEqual(settings, { ...settings, showCoverPhotos: false })).toBe(false);
     expect(settingsAreEqual(settings, { ...settings, showCalendarTotals: false })).toBe(false);
     expect(settingsAreEqual(settings, { ...settings, tallyEnabled: false })).toBe(false);
+    expect(settingsAreEqual(settings, {
+      ...settings,
+      tallyTagLabels: { running: "Kilometres run" }
+    })).toBe(false);
+    expect(settingsAreEqual(settings, {
+      ...settings,
+      tallyMetricLabels: { photos: "Images" }
+    })).toBe(false);
+    expect(settingsAreEqual(
+      { ...settings, tallyTagLabels: { running: "Run", pushups: "Push-ups" } },
+      { ...settings, tallyTagLabels: { pushups: "Push-ups", running: "Run" } }
+    )).toBe(true);
   });
 });

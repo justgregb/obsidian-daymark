@@ -9,9 +9,11 @@ function aggregate(overrides: Partial<PeriodAggregate> = {}): PeriodAggregate {
     notePaths: [],
     noteSources: [],
     words: 142,
+    photos: 3,
     totalCheckboxes: 6,
     completedCheckboxes: 5,
     wordSources: [],
+    photoSources: [],
     checkboxSources: [],
     tags: [],
     ...overrides

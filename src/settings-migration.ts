@@ -1,10 +1,13 @@
 import { DEFAULT_SETTINGS, type DaymarkSettings } from "./types";
+import { normalizeTallyMetricLabels, normalizeTallyTagLabels } from "./format";
 
-export const CURRENT_SETTINGS_VERSION = 1;
+export const CURRENT_SETTINGS_VERSION = 3;
 
-type StoredSettings = Partial<DaymarkSettings> & {
+type StoredSettings = Omit<Partial<DaymarkSettings>, "tallyMetricLabels" | "tallyTagLabels"> & {
   showSelectedDayStats?: unknown;
   settingsVersion?: unknown;
+  tallyMetricLabels?: unknown;
+  tallyTagLabels?: unknown;
 };
 
 export interface SettingsMigrationResult {
@@ -32,10 +35,26 @@ export function migrateStoredSettings(value: unknown): SettingsMigrationResult {
     delete stored.showSelectedDayStats;
     changed = true;
   }
+  const metricLabels = normalizeTallyMetricLabels(stored.tallyMetricLabels);
+  const originalMetricEntries = isRecord(stored.tallyMetricLabels)
+    ? Object.entries(stored.tallyMetricLabels)
+    : [];
+  if (!isRecord(stored.tallyMetricLabels)
+    || originalMetricEntries.length !== Object.keys(metricLabels).length
+    || originalMetricEntries.some(([metric, label]) => metricLabels[metric as keyof typeof metricLabels] !== label)) {
+    changed = true;
+  }
+  stored.tallyMetricLabels = metricLabels;
+  const labels = normalizeTallyTagLabels(stored.tallyTagLabels);
+  const originalEntries = isRecord(stored.tallyTagLabels) ? Object.entries(stored.tallyTagLabels) : [];
+  if (!isRecord(stored.tallyTagLabels)
+    || originalEntries.length !== Object.keys(labels).length
+    || originalEntries.some(([tag, label]) => labels[tag] !== label)) changed = true;
+  stored.tallyTagLabels = labels;
   if (stored.settingsVersion !== CURRENT_SETTINGS_VERSION) {
     stored.settingsVersion = CURRENT_SETTINGS_VERSION;
     changed = true;
   }
 
-  return { settings: stored, changed };
+  return { settings: stored as Partial<DaymarkSettings>, changed };
 }

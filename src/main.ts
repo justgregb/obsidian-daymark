@@ -12,6 +12,10 @@ import { LEGACY_TALLY_VIEW_TYPE, LegacyTallyView } from "./legacy-tally-view";
 import { appendQuickLogEntry, createQuickLogEntry } from "./quick-log";
 import { promptQuickLog } from "./quick-log-modal";
 import {
+  normalizeTallyMetricLabels,
+  normalizeTallyTagLabels
+} from "./format";
+import {
   DaymarkSettingTab,
   normalizeAdditionalWordFolder,
   normalizeJournalFolder,
@@ -45,12 +49,17 @@ interface WorkspaceWithOptionalReveal {
 }
 
 export default class DaymarkPlugin extends Plugin {
-  override settings: DaymarkSettings = { ...DEFAULT_SETTINGS };
+  override settings: DaymarkSettings = {
+    ...DEFAULT_SETTINGS,
+    tallyMetricLabels: {},
+    tallyTagLabels: {}
+  };
   index!: DaymarkIndex;
   additionalWordIndex!: AdditionalWordIndex;
   private readonly listeners = new Set<() => void>();
   private readonly refreshTimers = new Map<string, number>();
-  private readonly summaryDescriptors = new WeakMap<PeriodAggregate, Map<string, SavedSummaryDescriptor>>();
+  private summaryDescriptors = new WeakMap<PeriodAggregate, Map<string, SavedSummaryDescriptor>>();
+  private summaryStates = new WeakMap<SavedSummaryDescriptor, Promise<SavedSummaryState>>();
   private rebuildTimer: number | null = null;
   private additionalWordRebuildTimer: number | null = null;
 
@@ -173,28 +182,47 @@ export default class DaymarkPlugin extends Plugin {
         : normalizeAdditionalWordFolder(change.additionalWordFolder),
       templatePath: change.templatePath === undefined
         ? this.settings.templatePath
-        : normalizeTemplatePath(change.templatePath)
+        : normalizeTemplatePath(change.templatePath),
+      tallyMetricLabels: change.tallyMetricLabels === undefined
+        ? this.settings.tallyMetricLabels
+        : normalizeTallyMetricLabels(change.tallyMetricLabels),
+      tallyTagLabels: change.tallyTagLabels === undefined
+        ? this.settings.tallyTagLabels
+        : normalizeTallyTagLabels(change.tallyTagLabels)
     };
     if (settingsAreEqual(previous, next)) return;
     this.settings = next;
+    this.summaryDescriptors = new WeakMap();
+    this.summaryStates = new WeakMap();
     await this.saveData(next);
     if (previous.tallyEnabled && !next.tallyEnabled) {
       this.app.workspace.detachLeavesOfType(LEGACY_TALLY_VIEW_TYPE);
+      this.additionalWordIndex.reset();
+      if (this.additionalWordRebuildTimer !== null) {
+        window.clearTimeout(this.additionalWordRebuildTimer);
+        this.additionalWordRebuildTimer = null;
+      }
     }
     const rebuildDailyNotes = settingsRequireRebuild(previous, next);
     const rebuildAdditionalWords = settingsRequireAdditionalWordRebuild(previous, next);
     if (rebuildDailyNotes) this.scheduleRebuild();
-    if (rebuildAdditionalWords) this.scheduleAdditionalWordRebuild();
+    if (rebuildAdditionalWords) {
+      this.scheduleAdditionalWordRebuild(!previous.tallyEnabled && next.tallyEnabled ? 0 : 400);
+    }
     if (!rebuildDailyNotes && !rebuildAdditionalWords) this.emitChange();
   }
 
   async rebuildIndex(): Promise<void> {
-    await Promise.all([this.index.rebuild(), this.additionalWordIndex.rebuild()]);
+    const rebuilds = [this.index.rebuild()];
+    if (this.usesAdditionalWordIndex()) rebuilds.push(this.additionalWordIndex.rebuild());
+    await Promise.all(rebuilds);
     this.emitChange();
   }
 
   async ensureTallyReady(): Promise<void> {
-    await Promise.all([this.index.ensureReady(), this.additionalWordIndex.ensureReady()]);
+    const indexes = [this.index.ensureReady()];
+    if (this.usesAdditionalWordIndex()) indexes.push(this.additionalWordIndex.ensureReady());
+    await Promise.all(indexes);
   }
 
   async openOrCreateDailyNote(date: PlainDate): Promise<void> {
@@ -273,14 +301,22 @@ export default class DaymarkPlugin extends Plugin {
     } else {
       await this.app.vault.create(summary.path, summary.content);
     }
+    this.summaryStates.set(summary, Promise.resolve("saved"));
     return summary.path;
   }
 
   async summaryState(mode: PeriodMode, aggregate: PeriodAggregate): Promise<SavedSummaryState> {
     const summary = this.summaryDescriptor(mode, aggregate);
-    const existing = this.app.vault.getAbstractFileByPath(summary.path);
-    if (!(existing instanceof TFile)) return "save";
-    return getSavedSummaryState(await this.app.vault.cachedRead(existing), summary.content);
+    const cached = this.summaryStates.get(summary);
+    if (cached) return cached;
+    const pending = this.readSummaryState(summary);
+    this.summaryStates.set(summary, pending);
+    try {
+      return await pending;
+    } catch (error) {
+      if (this.summaryStates.get(summary) === pending) this.summaryStates.delete(summary);
+      throw error;
+    }
   }
 
   summaryPath(mode: PeriodMode, aggregate: PeriodAggregate): string {
@@ -302,6 +338,8 @@ export default class DaymarkPlugin extends Plugin {
       ),
       journalFolder: normalizeJournalFolder(stored?.journalFolder ?? DEFAULT_SETTINGS.journalFolder),
       templatePath: normalizeTemplatePath(stored?.templatePath ?? DEFAULT_SETTINGS.templatePath),
+      tallyMetricLabels: normalizeTallyMetricLabels(stored?.tallyMetricLabels),
+      tallyTagLabels: normalizeTallyTagLabels(stored?.tallyTagLabels),
       weekStart: normalizeWeekStartSetting(stored?.weekStart)
     };
     if (migration.changed) await this.saveData(this.settings);
@@ -318,7 +356,7 @@ export default class DaymarkPlugin extends Plugin {
     if (!(file instanceof TFile)) return;
     const summaryChanged = this.matchesSummaryPath(file.path);
     const refreshDailyNote = this.index.matches(file);
-    const refreshAdditionalWords = this.additionalWordIndex.matches(file);
+    const refreshAdditionalWords = this.usesAdditionalWordIndex() && this.additionalWordIndex.matches(file);
     if (!summaryChanged && !refreshDailyNote && !refreshAdditionalWords) return;
     const existing = this.refreshTimers.get(file.path);
     if (existing !== undefined) window.clearTimeout(existing);
@@ -337,7 +375,7 @@ export default class DaymarkPlugin extends Plugin {
   private removeFile(file: TAbstractFile): void {
     if (!(file instanceof TFile)) {
       this.scheduleRebuild();
-      this.scheduleAdditionalWordRebuild();
+      if (this.usesAdditionalWordIndex()) this.scheduleAdditionalWordRebuild();
       return;
     }
     const summaryChanged = this.matchesSummaryPath(file.path);
@@ -367,10 +405,11 @@ export default class DaymarkPlugin extends Plugin {
     if (wasAdditionalWordFile) this.additionalWordIndex.remove(oldPath);
     if (!(file instanceof TFile)) {
       this.scheduleRebuild();
-      this.scheduleAdditionalWordRebuild();
+      if (this.usesAdditionalWordIndex()) this.scheduleAdditionalWordRebuild();
       return;
     }
-    if (this.index.matches(file) || this.additionalWordIndex.matches(file)) this.scheduleRefresh(file);
+    if (this.index.matches(file)
+      || (this.usesAdditionalWordIndex() && this.additionalWordIndex.matches(file))) this.scheduleRefresh(file);
     else if (wasDailyNote || wasAdditionalWordFile || summaryChanged) this.emitChange();
   }
 
@@ -384,18 +423,29 @@ export default class DaymarkPlugin extends Plugin {
     }, 400);
   }
 
-  private scheduleAdditionalWordRebuild(): void {
+  private scheduleAdditionalWordRebuild(delay = 400): void {
     if (this.additionalWordRebuildTimer !== null) window.clearTimeout(this.additionalWordRebuildTimer);
     this.additionalWordRebuildTimer = window.setTimeout(() => {
       this.additionalWordRebuildTimer = null;
       void this.additionalWordIndex.rebuild().then(() => this.emitChange()).catch((error: unknown) => {
         console.error("Daymark could not rebuild its additional word-count index.", error);
       });
-    }, 400);
+    }, delay);
   }
 
   private emitChange(): void {
+    this.summaryStates = new WeakMap();
     for (const listener of this.listeners) listener();
+  }
+
+  private usesAdditionalWordIndex(): boolean {
+    return this.settings.tallyEnabled && this.settings.additionalWordFolder.length > 0;
+  }
+
+  private async readSummaryState(summary: SavedSummaryDescriptor): Promise<SavedSummaryState> {
+    const existing = this.app.vault.getAbstractFileByPath(summary.path);
+    if (!(existing instanceof TFile)) return "save";
+    return getSavedSummaryState(await this.app.vault.cachedRead(existing), summary.content);
   }
 
   private async ensureFolder(path: string): Promise<void> {
@@ -423,7 +473,7 @@ export default class DaymarkPlugin extends Plugin {
   private summaryDescriptor(mode: PeriodMode, aggregate: PeriodAggregate): SavedSummaryDescriptor {
     const locale = this.locale;
     const weekStart = this.resolveWeekStart();
-    const key = JSON.stringify([mode, this.settings.journalFolder, weekStart, locale]);
+    const key = `${mode}/${locale}`;
     let descriptors = this.summaryDescriptors.get(aggregate);
     if (!descriptors) {
       descriptors = new Map();
@@ -436,7 +486,9 @@ export default class DaymarkPlugin extends Plugin {
       mode,
       aggregate,
       weekStart,
-      locale
+      locale,
+      this.settings.tallyTagLabels,
+      this.settings.tallyMetricLabels
     );
     descriptors.set(key, descriptor);
     return descriptor;

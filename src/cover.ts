@@ -12,8 +12,11 @@ const IMAGE_EXTENSIONS = new Set([
   "webp"
 ]);
 
-export function isSupportedCoverPath(path: string): boolean {
-  const separator = path.lastIndexOf(".");
+export function isSupportedImagePath(path: string): boolean {
+  const cleanPath = path.split(/[?#]/u, 1)[0] ?? path;
+  const separator = cleanPath.lastIndexOf(".");
   if (separator < 0) return false;
-  return IMAGE_EXTENSIONS.has(path.slice(separator + 1).toLocaleLowerCase());
+  return IMAGE_EXTENSIONS.has(cleanPath.slice(separator + 1).toLocaleLowerCase());
 }
+
+export const isSupportedCoverPath = isSupportedImagePath;

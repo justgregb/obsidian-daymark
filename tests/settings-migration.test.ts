@@ -11,7 +11,12 @@ describe("settings migration", () => {
   });
 
   it("leaves the current schema stable", () => {
-    const result = migrateStoredSettings({ settingsVersion: CURRENT_SETTINGS_VERSION, showCalendarTotals: true });
+    const result = migrateStoredSettings({
+      settingsVersion: CURRENT_SETTINGS_VERSION,
+      showCalendarTotals: true,
+      tallyMetricLabels: { photos: "Images" },
+      tallyTagLabels: { running: "Kilometres run" }
+    });
     expect(result.changed).toBe(false);
   });
 
@@ -19,5 +24,57 @@ describe("settings migration", () => {
     const result = migrateStoredSettings(null);
     expect(result.settings.showCalendarTotals).toBe(true);
     expect(result.settings.settingsVersion).toBe(CURRENT_SETTINGS_VERSION);
+    expect(result.settings.tallyMetricLabels).toEqual({});
+    expect(result.settings.tallyTagLabels).toEqual({});
+  });
+
+  it("migrates version 1 without losing preferences", () => {
+    const result = migrateStoredSettings({
+      settingsVersion: 1,
+      journalFolder: "Diary",
+      dateFormat: "DD.MM.YYYY",
+      tallyEnabled: false
+    });
+    expect(result.settings).toMatchObject({
+      settingsVersion: 3,
+      journalFolder: "Diary",
+      dateFormat: "DD.MM.YYYY",
+      tallyEnabled: false,
+      tallyTagLabels: {}
+    });
+    expect(result.changed).toBe(true);
+  });
+
+  it("normalizes aliases and recovers from invalid stored values", () => {
+    const result = migrateStoredSettings({
+      settingsVersion: 3,
+      showCalendarTotals: true,
+      tallyTagLabels: {
+        "#Running": "  Kilometres   run ",
+        pushups: "",
+        cycling: 12
+      }
+    });
+    expect(result.settings.tallyTagLabels).toEqual({ running: "Kilometres run" });
+    expect(result.changed).toBe(true);
+  });
+
+  it("normalizes core metric aliases and drops unknown keys", () => {
+    const result = migrateStoredSettings({
+      settingsVersion: 3,
+      showCalendarTotals: true,
+      tallyMetricLabels: {
+        dailyNotes: "  Journal   days ",
+        words: "",
+        photos: "Images",
+        checkedItems: "Done"
+      },
+      tallyTagLabels: {}
+    });
+    expect(result.settings.tallyMetricLabels).toEqual({
+      dailyNotes: "Journal days",
+      photos: "Images"
+    });
+    expect(result.changed).toBe(true);
   });
 });

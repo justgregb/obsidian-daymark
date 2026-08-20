@@ -1,7 +1,9 @@
 .daymark-settings-intro {
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
   line-height: var(--line-height-normal);
-  margin-bottom: var(--size-4-6);
-  max-width: 68ch;
+  margin: 0 0 var(--size-4-8);
+  max-width: 72ch;
 }
 
 .daymark-settings-section {
@@ -17,27 +19,40 @@
   color: var(--text-muted);
   font-size: var(--font-ui-smaller);
   font-weight: var(--font-semibold);
-  letter-spacing: 0.06em;
-  margin: 0 0 var(--size-4-1);
+  letter-spacing: 0.075em;
+  line-height: 1.2;
+  margin: 0;
   text-transform: uppercase;
 }
 
 .daymark-settings-section-description {
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
   line-height: var(--line-height-normal);
-  margin: 0 0 var(--size-4-3);
-  max-width: 68ch;
+  margin: var(--size-4-1) 0 var(--size-4-3);
+  max-width: 64ch;
 }
 
 .daymark-settings-card {
-  background: var(--background-secondary);
+  background: color-mix(in srgb, var(--background-secondary) 78%, var(--background-primary));
   border: 1px solid var(--background-modifier-border);
   border-radius: var(--radius-l);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 4%);
   overflow: hidden;
   padding: 0 var(--size-4-4);
 }
 
 .daymark-settings-card > .setting-item {
-  padding: var(--size-4-4) var(--size-4-1);
+  gap: var(--size-4-6);
+  padding: 14px var(--size-4-1);
+}
+
+.daymark-settings-card .setting-item-info {
+  min-width: 0;
+}
+
+.daymark-settings-card .setting-item-name {
+  font-weight: var(--font-medium);
 }
 
 .daymark-settings-card .setting-item-description {
@@ -46,16 +61,89 @@
 }
 
 .daymark-settings-card input[type="text"] {
+  background: var(--background-primary);
+  min-height: 32px;
   max-width: 100%;
   width: clamp(220px, 32vw, 320px);
 }
 
 .daymark-settings-card select {
   max-width: 100%;
+  min-height: 32px;
+  min-width: 190px;
 }
 
 .daymark-settings-card > .setting-item:first-child {
   border-top: 0;
+}
+
+.daymark-tally-labels {
+  border-top: 1px solid var(--background-modifier-border);
+  padding-bottom: var(--size-4-1);
+}
+
+.daymark-tally-labels > .setting-item {
+  padding: 14px var(--size-4-1) 12px;
+}
+
+.daymark-tally-labels-heading {
+  border-top: 0;
+}
+
+.daymark-tally-labels-heading .setting-item-name {
+  font-weight: var(--font-semibold);
+}
+
+.daymark-tally-label-group + .daymark-tally-label-group {
+  border-top: 1px solid var(--background-modifier-border);
+  margin-top: var(--size-4-2);
+}
+
+.daymark-tally-label-group-heading {
+  padding: 12px var(--size-4-1) 6px;
+}
+
+.daymark-tally-label-group-title {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  font-weight: var(--font-semibold);
+  letter-spacing: 0.065em;
+  line-height: 1.2;
+  margin-bottom: 3px;
+  text-transform: uppercase;
+}
+
+.daymark-tally-label-group-heading .setting-item-description {
+  font-size: var(--font-ui-smaller);
+  max-width: 54ch;
+}
+
+.daymark-tally-label-group-rows > .setting-item {
+  gap: var(--size-4-4);
+  padding: 9px var(--size-4-1);
+}
+
+.daymark-tally-label-group-rows > .setting-item:first-child {
+  border-top: 0;
+}
+
+.daymark-tally-label-group-rows input[type="text"] {
+  width: clamp(190px, 28vw, 260px);
+}
+
+.daymark-tally-label-row .setting-item-name {
+  font-family: var(--font-monospace);
+  font-size: var(--font-ui-small);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.daymark-tally-labels-status {
+  background: var(--background-modifier-hover);
+  border-radius: var(--radius-s);
+  margin: var(--size-4-1) var(--size-4-1) var(--size-4-3);
+  padding: 10px 12px;
 }
 
 .daymark-weekday-toggles {
@@ -75,6 +163,7 @@
   height: 30px;
   min-height: 30px;
   padding: 0;
+  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
   width: 30px;
 }
 
@@ -92,4 +181,37 @@
 
 .daymark-settings-card .daymark-weekday-button:focus-visible {
   box-shadow: 0 0 0 2px var(--background-modifier-border-focus);
+}
+
+.daymark-setting-preview {
+  align-items: baseline;
+  color: var(--text-muted);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.daymark-setting-preview-value,
+.daymark-setting-preview-invalid {
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  display: inline-block;
+  font-family: var(--font-monospace);
+  font-size: var(--font-ui-smaller);
+  line-height: 1.5;
+  padding: 0 5px;
+}
+
+.daymark-setting-preview-value {
+  color: var(--text-accent);
+}
+
+.daymark-setting-preview-invalid {
+  color: var(--text-error);
+}
+
+.daymark-setting-invalid {
+  border-color: var(--text-error) !important;
 }

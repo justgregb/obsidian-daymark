@@ -44,9 +44,11 @@ function aggregate(mode: PeriodMode, anchor: PlainDate, notePaths: string[]): Pe
     notePaths,
     noteSources,
     words: 44,
+    photos: 3,
     totalCheckboxes: 3,
     completedCheckboxes: 2,
     wordSources: [],
+    photoSources: [],
     checkboxSources: [],
     tags: [
       { tag: "greek", total: 1, sources: [] },
@@ -82,6 +84,7 @@ describe("saved summaries", () => {
       "Journal/2026/02/2026-02-01.md"
     ]);
     data.wordSources = [source("2026-01-02", 10), source("2026-02-01", 34)];
+    data.photoSources = [source("2026-01-02", 1), source("2026-02-01", 2)];
     data.checkboxSources = [source("2026-01-02", 1), source("2026-02-01", 1)];
     data.tags = [
       { tag: "greek", total: 1, sources: [taskSource("2026-02-01", "greek", 1)] },
@@ -92,7 +95,7 @@ describe("saved summaries", () => {
     expect(summary.content).toBe([
       "## At a glance",
       "",
-      "**2 of 365 days** · **44 words** · **2 of 3 checked**",
+      "**Daily notes: 2 of 365 days** · **Words: 44** · **Photos: 3** · **Checked items: 2 of 3**",
       "",
       "**Tallies:** Greek 1 · Pushups 160",
       "",
@@ -100,10 +103,10 @@ describe("saved summaries", () => {
       "",
       "## Months",
       "",
-      "| Month | Daily notes | Words | Checked items |",
-      "| --- | ---: | ---: | ---: |",
-      "| Jan | 1 | 10 | 1 |",
-      "| Feb | 1 | 34 | 1 |",
+      "| Month | Daily notes | Words | Photos | Checked items |",
+      "| --- | ---: | ---: | ---: | ---: |",
+      "| Jan | 1 | 10 | 1 | 1 |",
+      "| Feb | 1 | 34 | 2 | 1 |",
       "",
       "## Tallies by month",
       "",
@@ -127,7 +130,7 @@ describe("saved summaries", () => {
     ]);
     data.wordSources = [source("2026-08-12", 44)];
     const summary = createSavedSummaryDescriptor("Journal", "week", data, 1, "en-US");
-    expect(summary.content).toContain("| [[Journal/2026/08/2026-08-12\\|Wed, Aug 12]] | 1 | 44 | 0 |");
+    expect(summary.content).toContain("| [[Journal/2026/08/2026-08-12\\|Wed, Aug 12]] | 1 | 44 | 0 | 0 |");
     expect(summary.content).toContain("**Most writing:** [[Journal/2026/08/2026-08-12|Wed, Aug 12]] · 44 words");
   });
 
@@ -145,6 +148,57 @@ describe("saved summaries", () => {
     expect(summary.content).toContain(
       "| [[Journal/2026/08/2026-08-12\\|Wed, Aug 12]] | 0 |"
     );
+  });
+
+  it("uses escaped aliases in totals and every breakdown while keeping duplicate labels separate", () => {
+    const data = aggregate("week", { year: 2026, month: 8, day: 12 }, [
+      "Journal/2026/08/2026-08-12.md"
+    ]);
+    data.tags = [
+      { tag: "pushups", total: 100, sources: [taskSource("2026-08-12", "pushups", 100)] },
+      { tag: "running", total: 6, sources: [taskSource("2026-08-12", "running", 6)] }
+    ];
+    const labels = {
+      pushups: "Effort *done*",
+      running: "Effort *done*"
+    };
+
+    const summary = createSavedSummaryDescriptor("Journal", "week", data, 1, "en-US", labels);
+    expect(summary.content).toContain("**Tallies:** Effort \\*done\\* 100 · Effort \\*done\\* 6");
+    expect(summary.content).toContain("| Day | Effort \\*done\\* | Effort \\*done\\* |");
+    expect(summary.content).toContain("| [[Journal/2026/08/2026-08-12\\|Wed, Aug 12]] | 100 | 6 |");
+  });
+
+  it("marks an existing generated report stale when an alias changes", () => {
+    const data = aggregate("week", { year: 2026, month: 8, day: 12 }, [
+      "Journal/2026/08/2026-08-12.md"
+    ]);
+    const first = createSavedSummaryDescriptor("Journal", "week", data, 1, "en-US", {
+      pushups: "Push-ups completed"
+    });
+    const changed = createSavedSummaryDescriptor("Journal", "week", data, 1, "en-US", {
+      pushups: "Repetitions"
+    });
+    expect(getSavedSummaryState(first.content, changed.content)).toBe("update");
+  });
+
+  it("uses core metric aliases and marks their report stale when they change", () => {
+    const data = aggregate("week", { year: 2026, month: 8, day: 12 }, [
+      "Journal/2026/08/2026-08-12.md"
+    ]);
+    const first = createSavedSummaryDescriptor("Journal", "week", data, 1, "en-US", {}, {
+      dailyNotes: "Journal days",
+      words: "Writing",
+      photos: "Images"
+    });
+    expect(first.content).toContain("**Journal days: 1 of 7 days** · **Writing: 44** · **Images: 3**");
+    expect(first.content).toContain("| Day | Journal days | Writing | Images | Checked items |");
+    const changed = createSavedSummaryDescriptor("Journal", "week", data, 1, "en-US", {}, {
+      dailyNotes: "Entries",
+      words: "Writing",
+      photos: "Images"
+    });
+    expect(getSavedSummaryState(first.content, changed.content)).toBe("update");
   });
 
   it("recognizes current and legacy generated summaries but rejects ordinary notes", () => {

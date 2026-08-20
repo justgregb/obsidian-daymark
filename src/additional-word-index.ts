@@ -35,6 +35,12 @@ export class AdditionalWordIndex {
     return this.wordTotal;
   }
 
+  reset(): void {
+    this.records.clear();
+    this.wordTotal = 0;
+    this.ready = false;
+  }
+
   async ensureReady(): Promise<void> {
     if (!this.ready) await this.rebuild();
   }
@@ -74,6 +80,11 @@ export class AdditionalWordIndex {
   }
 
   private async performRebuild(): Promise<void> {
+    if (this.getFolder().length === 0) {
+      this.reset();
+      this.ready = true;
+      return;
+    }
     const files = this.app.vault.getMarkdownFiles().filter((file) => this.matches(file));
     const parsed = await Promise.all(files.map(async (file) => {
       const content = await this.app.vault.cachedRead(file);

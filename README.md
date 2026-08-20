@@ -44,7 +44,8 @@ Tally unfolds beneath the calendar and follows the same Week, Month, or Year. It
 
 - Daily notes
 - Words
-- Checked items
+- Photos embedded in daily notes
+- Checked items without hashtags
 - Tagged counters from checked lines
 
 Name each tag after the thing being counted. For example:
@@ -54,13 +55,17 @@ Name each tag after the thing being counted. For example:
 - [x] Greek lesson #language-lessons
 ```
 
-This adds `14` to Kilometres cycled. A checked tagged line without a number adds `1`, so the second line adds one Language lesson. Select **Save** to create a clean Markdown report with an at-a-glance summary and chronological activity and Tally tables for Days, Weeks, or Months. Daymark will not overwrite an ordinary note that happens to share a report filename.
+This adds `14` to Kilometres cycled. A checked tagged line without a number adds `1`, so the second line adds one Language lesson. Tagged lines belong only to their tagged counter; they are not counted a second time under Checked items. Checked items is reserved for ordinary checkbox lines without hashtags.
+
+Photos counts local image embeds in your daily notes, including cover images. Select **Save** to create a clean Markdown report with an at-a-glance summary and chronological activity and Tally tables for Days, Weeks, or Months. Daymark will not overwrite an ordinary note that happens to share a report filename.
+
+Use **Display names** in Daymark settings to rename Daily notes, Words, Photos, or any discovered hashtag without changing your notes. For example, Photos can appear as **Images**, and `#running` can appear as **Kilometres run**, in both the sidebar and saved reports. Clearing a name restores Daymark’s automatic one.
 
 You can also choose one additional writing folder for a separate, all-time word count. It never changes journal totals or saved reports.
 
 ## Settings
 
-You can choose your daily-note folder, template, date format, first weekday, recurring-day shading, note covers, calendar totals, Tally, and an optional additional writing folder.
+You can choose your daily-note folder, template, date format, first weekday, recurring-day shading, note covers, calendar totals, Tally display names, and an optional additional writing folder.
 
 Daymark counts journal prose while ignoring frontmatter, code, URLs, images, Markdown list lines, and formatting characters.
 
@@ -112,7 +117,7 @@ After the build succeeds, copy `main.js`, `manifest.json`, and `styles.css` into
 
 ## Release status
 
-Version `0.1.0` is available as a manual GitHub release. Daymark has not yet been submitted to Obsidian's community plugin directory.
+Version `0.2.0` is available as a manual GitHub release. Daymark has not yet been submitted to Obsidian's community plugin directory.
 
 ## License
 

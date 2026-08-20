@@ -7,16 +7,12 @@ import {
   calendarYearActivityDates,
   yearWritingIntensity
 } from "./calendar-grid";
-import { installRovingNavigation } from "./calendar-keyboard";
 import { formatCalendarFooterSummary } from "./calendar-summary";
 import {
-  isYearMonthNavigationKey,
   moveCalendarViewport,
   moveYearViewport,
   selectCalendarDate,
-  type CalendarViewportState,
-  yearMonthFocusIndex,
-  yearMonthNavigationIndex
+  type CalendarViewportState
 } from "./calendar-state";
 import { isSupportedCoverPath } from "./cover";
 import {
@@ -74,6 +70,7 @@ export class DaymarkCalendarView extends ItemView {
   private shortWeekdayNames: string[] = [];
   private renderSelectedIso = "";
   private renderTodayIso = "";
+  private highlightedWeekdayMask = 0;
   private renderFrame: number | null = null;
   private renderVersion = 0;
   private readonly inlineTally: InlineTally;
@@ -286,12 +283,6 @@ export class DaymarkCalendarView extends ItemView {
     for (const date of calendarGridDates(this.displayedMonth, weekStart)) {
       this.createDay(grid, date, this.plugin.index.recordForDate(date), this.displayedMonth);
     }
-    installRovingNavigation(
-      grid,
-      ".daymark-calendar-day",
-      7,
-      this.dateIsInDisplayedMonth(this.selectedDate) ? this.renderSelectedIso : undefined
-    );
   }
 
   private createYearView(parent: HTMLElement, weekStart: Weekday, aggregate: PeriodAggregate): void {
@@ -325,7 +316,6 @@ export class DaymarkCalendarView extends ItemView {
         "aria-label",
         `${monthLabel} ${year}, ${noteCount} ${noteCount === 1 ? "daily note" : "daily notes"}, ${wordCount} ${wordCount === 1 ? "word" : "words"}.${selectedDateDescription} Show month view.`
       );
-      button.setAttr("aria-keyshortcuts", "ArrowLeft ArrowRight ArrowUp ArrowDown Home End");
       const title = button.createSpan("daymark-year-month-title");
       title.createSpan({ cls: "daymark-year-month-label", text: monthLabel });
       if (selectedMonth) {
@@ -345,14 +335,12 @@ export class DaymarkCalendarView extends ItemView {
         const words = activityIndex.wordsByDate.get(isoDate) ?? 0;
         const weekday = ((weekStart + index) % 7) as Weekday;
         const intensity = yearWritingIntensity(words, activityIndex.busiestDayWords);
-        const classes = [
-          "daymark-year-mark",
-          this.plugin.settings.highlightedWeekdays.includes(weekday) ? "is-highlighted" : "",
-          hasNote ? "has-note" : "",
-          intensity ? `has-writing-${intensity}` : "",
-          isoDate === this.renderTodayIso ? "is-today" : "",
-          isoDate === this.renderSelectedIso ? "is-selected" : ""
-        ].filter(Boolean).join(" ");
+        let classes = "daymark-year-mark";
+        if (this.weekdayIsHighlighted(weekday)) classes += " is-highlighted";
+        if (hasNote) classes += " has-note";
+        if (intensity) classes += ` has-writing-${intensity}`;
+        if (isoDate === this.renderTodayIso) classes += " is-today";
+        if (isoDate === this.renderSelectedIso) classes += " is-selected";
         const mark = activity.createSpan(classes);
         mark.dataset.date = isoDate;
       }
@@ -361,38 +349,7 @@ export class DaymarkCalendarView extends ItemView {
         this.displayedMonth = first;
         this.setMode("month");
       });
-      button.addEventListener("keydown", (event) => this.handleYearMonthKeydown(event, button, months));
     }
-    const buttons = Array.from(months.querySelectorAll<HTMLButtonElement>(".daymark-year-month"));
-    const focusIndex = yearMonthFocusIndex(this.displayedMonth, this.selectedDate, year);
-    buttons.forEach((button, index) => {
-      button.tabIndex = index === focusIndex ? 0 : -1;
-      button.addEventListener("focus", () => {
-        buttons.forEach((candidate) => { candidate.tabIndex = candidate === button ? 0 : -1; });
-      });
-    });
-  }
-
-  private handleYearMonthKeydown(
-    event: KeyboardEvent,
-    current: HTMLButtonElement,
-    months: HTMLElement
-  ): void {
-    if (!isYearMonthNavigationKey(event.key)) return;
-    event.preventDefault();
-    const buttons = Array.from(months.querySelectorAll<HTMLButtonElement>(".daymark-year-month"));
-    const currentIndex = buttons.indexOf(current);
-    const firstTop = buttons[0]?.offsetTop;
-    const firstNextRow = firstTop === undefined
-      ? -1
-      : buttons.findIndex((button) => button.offsetTop > firstTop + 1);
-    const gridTemplate = window.getComputedStyle(months).gridTemplateColumns.trim();
-    const computedTracks = gridTemplate.length > 0 && gridTemplate !== "none"
-      ? gridTemplate.split(/\s+/u).filter(Boolean).length
-      : 0;
-    const columnCount = firstNextRow > 0 ? firstNextRow : computedTracks > 0 ? computedTracks : 3;
-    const targetIndex = yearMonthNavigationIndex(currentIndex, event.key, columnCount, buttons.length);
-    if (targetIndex !== null) buttons[targetIndex]?.focus();
   }
 
   private createWeekView(parent: HTMLElement, weekStart: Weekday): void {
@@ -402,7 +359,6 @@ export class DaymarkCalendarView extends ItemView {
     for (const date of calendarWeekDates(currentWeek, weekStart)) {
       this.createWeekRow(list, date, this.plugin.index.recordForDate(date));
     }
-    installRovingNavigation(list, ".daymark-week-row", 1, this.renderSelectedIso);
   }
 
   private createDay(
@@ -416,18 +372,16 @@ export class DaymarkCalendarView extends ItemView {
     const selected = isoDate === this.renderSelectedIso && !outside;
     const today = isoDate === this.renderTodayIso && !outside;
     const weekday = toDate(date).getUTCDay();
-    const highlighted = this.plugin.settings.highlightedWeekdays.includes(weekday as Weekday);
+    const highlighted = this.weekdayIsHighlighted(weekday);
     const cover = record && this.plugin.settings.showCoverPhotos ? this.firstCoverFile(record) : null;
-    const classes = [
-      "daymark-calendar-day",
-      outside ? "is-outside-month" : "",
-      selected ? "is-selected" : "",
-      today ? "is-today" : "",
-      weekday === 0 || weekday === 6 ? "is-weekend" : "",
-      highlighted ? "is-highlighted" : "",
-      record ? "has-note" : "",
-      cover ? "has-cover" : ""
-    ].filter(Boolean).join(" ");
+    let classes = "daymark-calendar-day";
+    if (outside) classes += " is-outside-month";
+    if (selected) classes += " is-selected";
+    if (today) classes += " is-today";
+    if (weekday === 0 || weekday === 6) classes += " is-weekend";
+    if (highlighted) classes += " is-highlighted";
+    if (record) classes += " has-note";
+    if (cover) classes += " has-cover";
     const button = parent.createEl("button", { cls: classes });
     button.dataset.date = isoDate;
     button.setAttr("role", "gridcell");
@@ -463,16 +417,14 @@ export class DaymarkCalendarView extends ItemView {
     const weekday = toDate(date).getUTCDay() as Weekday;
     const selected = isoDate === this.renderSelectedIso;
     const today = isoDate === this.renderTodayIso;
-    const highlighted = this.plugin.settings.highlightedWeekdays.includes(weekday);
+    const highlighted = this.weekdayIsHighlighted(weekday);
     const cover = record && this.plugin.settings.showCoverPhotos ? this.firstCoverFile(record) : null;
-    const classes = [
-      "daymark-week-row",
-      selected ? "is-selected" : "",
-      today ? "is-today" : "",
-      highlighted ? "is-highlighted" : "",
-      record ? "has-note" : "",
-      cover ? "has-cover" : ""
-    ].filter(Boolean).join(" ");
+    let classes = "daymark-week-row";
+    if (selected) classes += " is-selected";
+    if (today) classes += " is-today";
+    if (highlighted) classes += " is-highlighted";
+    if (record) classes += " has-note";
+    if (cover) classes += " has-cover";
     const row = parent.createEl("button", { cls: classes });
     row.dataset.date = isoDate;
     const label = row.createSpan({
@@ -632,6 +584,14 @@ export class DaymarkCalendarView extends ItemView {
     }
     this.renderSelectedIso = toIsoDate(this.selectedDate);
     this.renderTodayIso = toIsoDate(todayPlainDate());
+    this.highlightedWeekdayMask = 0;
+    for (const weekday of this.plugin.settings.highlightedWeekdays) {
+      this.highlightedWeekdayMask |= 1 << weekday;
+    }
+  }
+
+  private weekdayIsHighlighted(weekday: number): boolean {
+    return (this.highlightedWeekdayMask & (1 << weekday)) !== 0;
   }
 
   private dateIsInDisplayedMonth(date: PlainDate): boolean {

@@ -1,4 +1,5 @@
 import type { DaymarkSettings } from "./types";
+import { tallyMetricLabelsAreEqual, tallyTagLabelsAreEqual } from "./format";
 
 export function settingsAreEqual(left: DaymarkSettings, right: DaymarkSettings): boolean {
   return left.settingsVersion === right.settingsVersion
@@ -11,7 +12,9 @@ export function settingsAreEqual(left: DaymarkSettings, right: DaymarkSettings):
     && left.highlightedWeekdays.every((weekday, index) => weekday === right.highlightedWeekdays[index])
     && left.showCoverPhotos === right.showCoverPhotos
     && left.showCalendarTotals === right.showCalendarTotals
-    && left.tallyEnabled === right.tallyEnabled;
+    && left.tallyEnabled === right.tallyEnabled
+    && tallyMetricLabelsAreEqual(left.tallyMetricLabels, right.tallyMetricLabels)
+    && tallyTagLabelsAreEqual(left.tallyTagLabels, right.tallyTagLabels);
 }
 
 export function settingsRequireRebuild(previous: DaymarkSettings, next: DaymarkSettings): boolean {
@@ -19,5 +22,8 @@ export function settingsRequireRebuild(previous: DaymarkSettings, next: DaymarkS
 }
 
 export function settingsRequireAdditionalWordRebuild(previous: DaymarkSettings, next: DaymarkSettings): boolean {
-  return previous.additionalWordFolder !== next.additionalWordFolder;
+  return next.tallyEnabled && (
+    previous.additionalWordFolder !== next.additionalWordFolder
+    || (!previous.tallyEnabled && next.additionalWordFolder.length > 0)
+  );
 }

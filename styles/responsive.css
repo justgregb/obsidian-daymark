@@ -109,7 +109,9 @@
     padding: 0 var(--size-4-2);
   }
 
-  .daymark-settings-card > .setting-item {
+  .daymark-settings-card > .setting-item,
+  .daymark-tally-labels > .setting-item,
+  .daymark-tally-label-group-rows > .setting-item {
     align-items: stretch;
     flex-direction: column;
     gap: var(--size-4-3);
@@ -122,7 +124,20 @@
     width: 100%;
   }
 
-  .daymark-settings-card input[type="text"] {
+  .daymark-settings-card > .daymark-setting-toggle {
+    align-items: center;
+    flex-direction: row;
+    gap: var(--size-4-4);
+  }
+
+  .daymark-settings-card > .daymark-setting-toggle .setting-item-control {
+    flex: 0 0 auto;
+    justify-content: flex-end;
+    width: auto;
+  }
+
+  .daymark-settings-card input[type="text"],
+  .daymark-settings-card select {
     width: 100%;
   }
 
@@ -144,23 +159,6 @@
   .daymark-settings-card .daymark-weekday-button {
     width: 100%;
   }
-}
-
-.daymark-setting-preview {
-  margin-top: 4px;
-}
-
-.daymark-setting-preview-value {
-  color: var(--text-accent);
-}
-
-.daymark-setting-preview-invalid,
-.daymark-setting-error {
-  color: var(--text-error);
-}
-
-.daymark-setting-invalid {
-  border-color: var(--text-error) !important;
 }
 
 .daymark-calendar-view button:focus-visible {

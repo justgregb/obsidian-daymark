@@ -28,6 +28,7 @@ export interface DailyRecord {
   date: PlainDate;
   isoDate: string;
   words: number;
+  photos: number;
   totalCheckboxes: number;
   completedCheckboxes: number;
   taggedTasks: TaggedTaskSource[];
@@ -58,9 +59,11 @@ export interface PeriodAggregate {
   notePaths: string[];
   noteSources: DailyMetricSource[];
   words: number;
+  photos: number;
   totalCheckboxes: number;
   completedCheckboxes: number;
   wordSources: DailyMetricSource[];
+  photoSources: DailyMetricSource[];
   checkboxSources: DailyMetricSource[];
   tags: TagAggregate[];
 }
@@ -76,10 +79,14 @@ export interface DaymarkSettings {
   showCoverPhotos: boolean;
   showCalendarTotals: boolean;
   tallyEnabled: boolean;
+  tallyMetricLabels: Partial<Record<TallyMetric, string>>;
+  tallyTagLabels: Record<string, string>;
 }
 
+export type TallyMetric = "dailyNotes" | "words" | "photos";
+
 export const DEFAULT_SETTINGS: DaymarkSettings = {
-  settingsVersion: 1,
+  settingsVersion: 3,
   journalFolder: "Journal",
   dateFormat: "YYYY-MM-DD",
   templatePath: "",
@@ -88,5 +95,7 @@ export const DEFAULT_SETTINGS: DaymarkSettings = {
   highlightedWeekdays: [],
   showCoverPhotos: true,
   showCalendarTotals: true,
-  tallyEnabled: true
+  tallyEnabled: true,
+  tallyMetricLabels: {},
+  tallyTagLabels: {}
 };

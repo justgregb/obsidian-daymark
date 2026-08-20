@@ -866,6 +866,13 @@
   white-space: nowrap;
 }
 
+.daymark-tally-tag-start {
+  border-top: 1px solid var(--background-modifier-border);
+  margin-top: var(--size-4-1);
+  min-height: 36px;
+  padding-top: var(--size-4-1);
+}
+
 .daymark-tally-additional-source {
   border-top: 1px solid var(--background-modifier-border);
   margin-top: var(--size-4-2);

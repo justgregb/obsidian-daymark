@@ -1,4 +1,5 @@
 import { readFile, writeFile } from "node:fs/promises";
+import { transform } from "esbuild";
 
 const sources = [
   "styles/calendar.css",
@@ -8,4 +9,5 @@ const sources = [
 ];
 const sections = await Promise.all(sources.map(async (path) => (await readFile(path, "utf8")).trimEnd()));
 const banner = "/* Generated from styles/*.css by npm run build:styles. */";
-await writeFile("styles.css", `${banner}\n${sections.join("\n\n")}\n`);
+const { code } = await transform(sections.join("\n\n"), { loader: "css", minify: true, target: "chrome112" });
+await writeFile("styles.css", `${banner}\n${code.trimEnd()}\n`);

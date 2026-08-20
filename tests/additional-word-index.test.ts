@@ -55,5 +55,26 @@ describe("additional word-count folder", () => {
     contents.set("Desk/Longform/Replacement.md", "A completely new draft");
     await index.rebuild();
     expect(index.totalWords).toBe(4);
+
+    index.reset();
+    expect(index.totalWords).toBe(0);
+  });
+
+  it("does not scan the vault when no additional folder is configured", async () => {
+    let scans = 0;
+    const app = {
+      vault: {
+        getMarkdownFiles: () => {
+          scans += 1;
+          return [];
+        }
+      }
+    } as unknown as ConstructorParameters<typeof AdditionalWordIndex>[0];
+    const index = new AdditionalWordIndex(app, () => "", () => "en-US");
+
+    await index.rebuild();
+
+    expect(scans).toBe(0);
+    expect(index.totalWords).toBe(0);
   });
 });

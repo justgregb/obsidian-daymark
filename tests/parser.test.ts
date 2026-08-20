@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { countMarkdownProseWords, countWords, parseDailyNote } from "../src/parser";
+import { countMarkdownPhotos, countMarkdownProseWords, countWords, parseDailyNote } from "../src/parser";
 
 const date = { year: 2026, month: 8, day: 12 };
 
@@ -12,8 +12,8 @@ describe("task parsing", () => {
       "---\ntype: daily\n---\n- [x] 160 #pushups – (40x4), feeling strong"
     );
     expect(record.words).toBe(0);
-    expect(record.totalCheckboxes).toBe(1);
-    expect(record.completedCheckboxes).toBe(1);
+    expect(record.totalCheckboxes).toBe(0);
+    expect(record.completedCheckboxes).toBe(0);
     expect(record.taggedTasks).toEqual([
       { tag: "pushups", value: 160, text: "160 #pushups – (40x4), feeling strong", line: 3 }
     ]);
@@ -27,11 +27,13 @@ describe("task parsing", () => {
       [
         "  - [X] 5.5 #Running #cardio #running",
         "- [x] Greek #greek",
-        "- [ ] 20 #pushups"
+        "- [ ] 20 #pushups",
+        "- [x] Finished ordinary item",
+        "- [ ] Pending ordinary item"
       ].join("\n")
     );
-    expect(record.completedCheckboxes).toBe(2);
-    expect(record.totalCheckboxes).toBe(3);
+    expect(record.completedCheckboxes).toBe(1);
+    expect(record.totalCheckboxes).toBe(2);
     expect(record.taggedTasks).toEqual([
       { tag: "running", value: 5.5, text: "5.5 #Running #cardio #running", line: 0 },
       { tag: "cardio", value: 5.5, text: "5.5 #Running #cardio #running", line: 0 },
@@ -69,8 +71,8 @@ describe("task parsing", () => {
         "- [X] 0 #meditation"
       ].join("\n")
     );
-    expect(record.completedCheckboxes).toBe(4);
-    expect(record.totalCheckboxes).toBe(4);
+    expect(record.completedCheckboxes).toBe(1);
+    expect(record.totalCheckboxes).toBe(1);
     expect(record.taggedTasks).toEqual([
       { tag: "meditation", value: 0, text: "0 #meditation", line: 3 }
     ]);
@@ -86,6 +88,26 @@ describe("task parsing", () => {
     expect(record.completedCheckboxes).toBe(0);
     expect(record.totalCheckboxes).toBe(0);
     expect(record.taggedTasks).toEqual([]);
+  });
+});
+
+describe("journal photos", () => {
+  it("counts local photo embeds while ignoring remote images, comments, and code", () => {
+    const content = [
+      "![[cover.jpg|300]]",
+      "![Detail](Assets/detail.png)",
+      "![Spaced](<Assets/my photo.webp>)",
+      "![Remote](https://example.com/photo.jpg)",
+      "![[document.pdf]]",
+      "`![[inline-code.jpg]]`",
+      "<!-- ![[hidden.jpg]] -->",
+      "```markdown",
+      "![[fenced.jpg]]",
+      "```"
+    ].join("\n");
+    const record = parseDailyNote("Journal/2026-08-12.md", "2026-08-12", date, content);
+    expect(record.photos).toBe(3);
+    expect(countMarkdownPhotos(content)).toBe(3);
   });
 });
 

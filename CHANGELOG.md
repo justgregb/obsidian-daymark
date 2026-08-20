@@ -1,10 +1,15 @@
 # Changelog
 
-## 0.1.0 — 2026-08-12
+## 0.2.0 — 2026-08-20
 
-- Coalesced index and metadata refreshes into one animation-frame render, delegated Month/Week keyboard navigation to their containers, and removed temporary date strings from active-file synchronization.
+- Reduced Daymark's runtime and rendering overhead by minifying the generated stylesheet under a 128 KB release-asset budget, caching saved-report state and discovered hashtags, skipping inactive additional-folder scans, consolidating settings helpers and responsive rules, and removing repeated Calendar class-list allocations.
+- Refined Daymark settings into quieter, more balanced cards with clearer Tally display-name groups, compact alias rows, polished date previews, native mobile toggle alignment, and a subtle divider before custom Tally counters.
+- Made Tally avoid double-counting completed tagged lines under Checked items, added an always-visible local Photos total with report breakdowns, and made Daily notes, Words, Photos, and tagged labels configurable without changing journal content.
+- Added configurable Tally labels discovered from completed tagged items, with normalized local settings, live sidebar sorting, saved-report aliases and stale detection, unused-label recovery, and responsive Settings controls.
+- Removed Daymark's custom arrow, Home, and End navigation from Week, Month, and Year while keeping native controls and assignable Obsidian command shortcuts.
+- Coalesced index and metadata refreshes into one animation-frame render and removed temporary date strings from active-file synchronization.
 - Clarified Tally documentation around measurable counters such as distance, repetitions, sessions, and lessons.
-- Made the selected or open day explicit beside its Year-view month label, placed its month first in the keyboard tab order, and retained the compact activity-map layout.
+- Made the selected or open day explicit beside its Year-view month label while retaining the compact activity-map layout.
 - Built Year activity and monthly totals from one cached-period lookup instead of repeating date-index queries or allocating an intermediate object for every calendar square.
 - Prepared Daymark for Obsidian review with atomic report updates, sidebar-state preservation across reloads, compatibility-safe leaf revealing, native settings headings, production minification, official lint checks, and complete runtime-asset verification.
 - Preserved cached Week, Month, and Year totals across unrelated note edits; reduced full-index date discovery, Year activity allocations, date-comparison allocations, and additional-folder prose intermediates without changing results or UI behavior.
@@ -30,10 +35,10 @@
 - Made **Open Tally** reveal and expand Daymark, migrated saved legacy Tally leaves into the unified view, and retained the old view type only as a transition shim.
 - Fixed Tally's title action by making the period title and Save/Open hover label one real button instead of overlapping sibling layers. Every click now resolves the live report state before saving, updating, or opening, with duplicate-submission protection.
 - Added assignable **Open today’s note** and **Go to date** commands; date jumping only reveals the day and never creates a note automatically.
-- Changed Calendar totals from a raw note count to period coverage, such as `12/31 days`, and added arrow-key focus navigation to Month and Week.
+- Changed Calendar totals from a raw note count to period coverage, such as `12/31 days`.
 - Changed current saved-report state from a disabled **Saved** label to an actionable **Open** control that reopens the generated Markdown report in a new tab.
 - Added a versioned settings migration that preserves the old calendar-total preference while adopting its clearer internal name.
-- Split Calendar summaries, keyboard behavior, and the generated stylesheet into maintainable source modules; added a light/dark responsive fixture matrix for 285px, 320px, and normal-width sidebars.
+- Split Calendar summaries and the generated stylesheet into maintainable source modules; added a light/dark responsive fixture matrix for 285px, 320px, and normal-width sidebars.
 - Matched Tally's overlaid Save/Saved action to the period-title width, kept a disabled Save affordance for empty periods, and preserved Calendar's exact title alignment; compacted Week years keep cross-month ranges readable.
 - Restored Calendar's footer-aware leaf state so the footer stays flush with the pane edge, and limited size containment to Year view so Month and Week retain their fixed geometry.
 - Added `Daymark: Quick Log`, an assignable command that appends one timestamped prose entry to today's daily note after explicit input and confirms before creating a missing note.
@@ -54,11 +59,16 @@
 - Kept the selected/open date anchored to its real year while browsing other years, preventing false month and day highlights.
 - Recovered the source for the installed Year calendar so future builds preserve the shipped behavior.
 - Added a twelve-month Year overview with compact daily-note activity grids and a Week → Month → Year calendar mode cycle.
+
+## 0.1.0 — 2026-08-12
+
+- Prepared the source, documentation, privacy statement, license, and minified runtime artifacts for the initial public release.
+- Updated generated-report writes and the settings heading to follow current Obsidian plugin API guidance.
 - Rewrote Daymark's settings in warmer, clearer language, hid the additional folder until Tally is enabled, and improved the form layout at narrow widths.
 - Added one optional recursive folder-wide word counter, shown as a separate all-time Tally section and excluded from saved period reports.
 - Matched Tally's totals list to the weekly agenda with compact rounded rows, stronger labels, and quieter right-aligned values.
 - Enlarged the uppercase period headings, removed the awkward top inset in both views, raised footer readability, gave Tally the same typographic language, and replaced circular toolbar hovers with softly squared controls.
-- Added container-aware Month, Week, and Tally layouts, compact narrow-width controls, and bounded wide-view grids.
+- Added container-aware Month, Week, and Tally layouts, independent body scrolling, compact narrow-width controls, and bounded wide-view grids.
 - Standardized locale-aware abbreviated month names across Daymark, Tally, breakdowns, and generated reports.
 - Renamed checkbox totals to Checked items in both the live view and generated reports, and compacted Tally period titles to prevent header truncation without shrinking controls.
 - Moved Tally's save state into a compact header icon and restored the Daily notes label.

@@ -4,7 +4,7 @@ import { getPeriodBounds } from "../src/date";
 import { DaymarkStore } from "../src/store";
 import type { DailyRecord } from "../src/types";
 
-function record(isoDate: string, words: number, completed: number, value?: number): DailyRecord {
+function record(isoDate: string, words: number, completed: number, value?: number, photos = 0): DailyRecord {
   const [year, month, day] = isoDate.split("-").map(Number) as [number, number, number];
   return {
     path: `Journal/${year}/${String(month).padStart(2, "0")}/${isoDate}.md`,
@@ -12,6 +12,7 @@ function record(isoDate: string, words: number, completed: number, value?: numbe
     date: { year, month, day },
     isoDate,
     words,
+    photos,
     totalCheckboxes: completed,
     completedCheckboxes: completed,
     taggedTasks: value === undefined ? [] : [{ tag: "pushups", value, text: `${value} #pushups`, line: 5 }]
@@ -22,8 +23,8 @@ describe("period aggregation", () => {
   it("totals only records inside the selected period and preserves sources", () => {
     const records = [
       record("2026-08-09", 30, 1, 20),
-      record("2026-08-10", 100, 2, 50),
-      record("2026-08-12", 80, 1, 160),
+      record("2026-08-10", 100, 2, 50, 1),
+      record("2026-08-12", 80, 1, 160, 2),
       record("2026-08-17", 200, 3, 100)
     ];
     const bounds = getPeriodBounds({ year: 2026, month: 8, day: 12 }, "week", 1);
@@ -38,6 +39,11 @@ describe("period aggregation", () => {
       { isoDate: "2026-08-12", value: 1 }
     ]);
     expect(result.words).toBe(180);
+    expect(result.photos).toBe(3);
+    expect(result.photoSources.map(({ isoDate, value }) => ({ isoDate, value }))).toEqual([
+      { isoDate: "2026-08-10", value: 1 },
+      { isoDate: "2026-08-12", value: 2 }
+    ]);
     expect(result.completedCheckboxes).toBe(3);
     expect(result.tags[0]?.total).toBe(210);
     expect(result.tags[0]?.sources.map((source) => source.isoDate)).toEqual(["2026-08-10", "2026-08-12"]);
@@ -135,5 +141,24 @@ describe("incremental store behavior", () => {
     const refreshedAugust = store.aggregate(augustBounds);
     expect(refreshedAugust).not.toBe(cachedAugust);
     expect(refreshedAugust.words).toBe(40);
+  });
+
+  it("caches discovered tags until the tag set changes", () => {
+    const store = new DaymarkStore();
+    const pushups = record("2026-08-10", 10, 0, 20);
+    store.upsert(pushups);
+
+    const cached = store.knownTags();
+    expect(cached).toEqual(["pushups"]);
+    expect(store.knownTags()).toBe(cached);
+
+    store.upsert({ ...pushups, words: 25 });
+    expect(store.knownTags()).toBe(cached);
+
+    store.upsert({
+      ...record("2026-08-11", 5, 0),
+      taggedTasks: [{ tag: "cycling", value: 4, text: "4 #cycling", line: 1 }]
+    });
+    expect(store.knownTags()).toEqual(["cycling", "pushups"]);
   });
 });
