@@ -3,6 +3,7 @@ import {
   calendarGridDates,
   calendarWeekDates,
   calendarWeekdays,
+  calendarYearActivityIndex,
   calendarYearActivityDates,
   yearWritingIntensity
 } from "../src/calendar-grid";
@@ -61,6 +62,29 @@ describe("sidebar calendar grid", () => {
     expect(yearWritingIntensity(300, 600)).toBe("medium");
     expect(yearWritingIntensity(600, 600)).toBe("high");
     expect(yearWritingIntensity(10, 0)).toBeNull();
+  });
+
+  it("builds one reusable Year activity lookup from the period aggregate", () => {
+    const activity = calendarYearActivityIndex(
+      [
+        { date: { year: 2026, month: 8, day: 12 }, isoDate: "2026-08-12" },
+        { date: { year: 2026, month: 8, day: 12 }, isoDate: "2026-08-12" },
+        { date: { year: 2026, month: 9, day: 1 }, isoDate: "2026-09-01" }
+      ],
+      [
+        { date: { year: 2026, month: 8, day: 12 }, isoDate: "2026-08-12", value: 120 },
+        { date: { year: 2026, month: 9, day: 1 }, isoDate: "2026-09-01", value: 480 }
+      ]
+    );
+
+    expect([...activity.noteDates]).toEqual(["2026-08-12", "2026-09-01"]);
+    expect(activity.wordsByDate).toEqual(new Map([
+      ["2026-08-12", 120],
+      ["2026-09-01", 480]
+    ]));
+    expect(activity.busiestDayWords).toBe(480);
+    expect(activity.monthNoteCounts.slice(7, 9)).toEqual([1, 1]);
+    expect(activity.monthWordCounts.slice(7, 9)).toEqual([120, 480]);
   });
 
 });

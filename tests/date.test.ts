@@ -3,6 +3,7 @@ import {
   addDays,
   compareDates,
   dateIsWithin,
+  datesEqual,
   formatPeriodTitle,
   getPeriodBounds,
   isSupportedDateFormat,
@@ -49,6 +50,11 @@ describe("period boundaries", () => {
     expect(compareDates({ year: 2026, month: 10, day: 1 }, { year: 2026, month: 9, day: 30 })).toBeGreaterThan(0);
     expect(dateIsWithin({ year: 2026, month: 8, day: 1 }, bounds)).toBe(true);
     expect(dateIsWithin({ year: 2026, month: 9, day: 1 }, bounds)).toBe(false);
+  });
+
+  it("compares date identity without formatting", () => {
+    expect(datesEqual(anchor, { year: 2026, month: 8, day: 12 })).toBe(true);
+    expect(datesEqual(anchor, { year: 2026, month: 8, day: 13 })).toBe(false);
   });
 
   it("clamps shifted anchors to valid dates", () => {

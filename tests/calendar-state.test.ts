@@ -6,6 +6,7 @@ import {
   moveYearViewport,
   navigationIndex,
   selectCalendarDate,
+  yearMonthFocusIndex,
   yearMonthNavigationIndex
 } from "../src/calendar-state";
 
@@ -65,6 +66,19 @@ describe("calendar view state", () => {
     expect(isYearMonthNavigationKey("End")).toBe(true);
     expect(isYearMonthNavigationKey("Enter")).toBe(false);
     expect(isYearMonthNavigationKey("Tab")).toBe(false);
+  });
+
+  it("lands Year keyboard focus on the selected month or the viewport anchor", () => {
+    expect(yearMonthFocusIndex(
+      { year: 2026, month: 3, day: 1 },
+      { year: 2026, month: 8, day: 14 },
+      2026
+    )).toBe(7);
+    expect(yearMonthFocusIndex(
+      { year: 2028, month: 3, day: 1 },
+      { year: 2026, month: 8, day: 14 },
+      2028
+    )).toBe(2);
   });
 
   it("uses the same navigation model for month and week controls", () => {

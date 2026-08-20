@@ -85,3 +85,12 @@ export function navigationIndex(
 }
 
 export const yearMonthNavigationIndex = navigationIndex;
+
+export function yearMonthFocusIndex(
+  displayedMonth: PlainDate,
+  selectedDate: PlainDate,
+  displayedYear: number
+): number {
+  const month = selectedDate.year === displayedYear ? selectedDate.month : displayedMonth.month;
+  return Math.max(0, Math.min(11, month - 1));
+}

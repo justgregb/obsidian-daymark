@@ -39,6 +39,16 @@ describe("responsive visual fixture matrix", () => {
     expect(calendarStyles).not.toContain("@container daymark-calendar-body");
   });
 
+  it("names the selected day without changing the compact Year grid", () => {
+    expect(calendarStyles).toMatch(
+      /\.daymark-year-month-title \{[^}]*display: flex;[^}]*justify-content: space-between;/s
+    );
+    expect(calendarStyles).toContain(".daymark-year-selected-day");
+    expect(calendarStyles).toMatch(
+      /\.daymark-year-selected-day \{[^}]*font-variant-numeric: tabular-nums;[^}]*letter-spacing: 0;/s
+    );
+  });
+
   it("keeps read-only Tally totals visually inert", () => {
     expect(calendarStyles).not.toContain(".daymark-tally-metric:hover");
   });

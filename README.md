@@ -14,7 +14,7 @@ Open Daymark from the ribbon or run **Daymark: Open calendar**.
 - Click a date to open its note. If it does not exist, Daymark asks before creating it.
 - Choose the first day of the week and softly shade recurring days such as weekends.
 
-Year view brings all twelve months together in a compact activity overview. Select a month to open it at full size.
+Year view brings all twelve months together in a compact activity overview. The selected or open day appears beside its month label, and selecting a month opens it at full size.
 
 Daymark follows your chosen journal folder and date format, including nested paths such as `YYYY/MM/YYYY-MM-DD`. It does not require Obsidian's Daily Notes plugin or another calendar plugin.
 
@@ -45,16 +45,16 @@ Tally unfolds beneath the calendar and follows the same Week, Month, or Year. It
 - Daily notes
 - Words
 - Checked items
-- Numeric values attached to tags on checked lines
+- Tagged counters from checked lines
 
-For example:
+Name each tag after the thing being counted. For example:
 
 ```markdown
-- [x] 30 #pushups
-- [x] Greek lesson #greek
+- [x] Cycled 14 km #kilometres-cycled
+- [x] Greek lesson #language-lessons
 ```
 
-This adds `30` to Pushups and `1` to Greek. Select **Save** to create a clean Markdown report with an at-a-glance summary and chronological activity and Tally tables for Days, Weeks, or Months. Daymark will not overwrite an ordinary note that happens to share a report filename.
+This adds `14` to Kilometres cycled. A checked tagged line without a number adds `1`, so the second line adds one Language lesson. Select **Save** to create a clean Markdown report with an at-a-glance summary and chronological activity and Tally tables for Days, Weeks, or Months. Daymark will not overwrite an ordinary note that happens to share a report filename.
 
 You can also choose one additional writing folder for a separate, all-time word count. It never changes journal totals or saved reports.
 

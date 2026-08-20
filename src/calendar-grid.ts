@@ -1,7 +1,42 @@
 import { addDays, getPeriodBounds, toDate } from "./date";
-import type { PlainDate, Weekday } from "./types";
+import type { DailyMetricSource, PlainDate, Weekday } from "./types";
 
 export type WritingIntensity = "low" | "medium" | "high";
+
+export interface CalendarYearActivityIndex {
+  noteDates: Set<string>;
+  wordsByDate: Map<string, number>;
+  busiestDayWords: number;
+  monthNoteCounts: number[];
+  monthWordCounts: number[];
+}
+
+export function calendarYearActivityIndex(
+  noteSources: readonly Pick<DailyMetricSource, "date" | "isoDate">[],
+  wordSources: readonly Pick<DailyMetricSource, "date" | "isoDate" | "value">[]
+): CalendarYearActivityIndex {
+  const noteDates = new Set<string>();
+  const wordsByDate = new Map<string, number>();
+  const monthNoteCounts = Array.from({ length: 12 }, () => 0);
+  const monthWordCounts = Array.from({ length: 12 }, () => 0);
+  let busiestDayWords = 0;
+  for (const source of noteSources) {
+    const isNewDate = !noteDates.has(source.isoDate);
+    noteDates.add(source.isoDate);
+    const monthIndex = source.date.month - 1;
+    if (isNewDate && monthIndex >= 0 && monthIndex < 12) monthNoteCounts[monthIndex] += 1;
+  }
+  for (const source of wordSources) {
+    const previousValue = wordsByDate.get(source.isoDate) ?? 0;
+    wordsByDate.set(source.isoDate, source.value);
+    const monthIndex = source.date.month - 1;
+    if (monthIndex >= 0 && monthIndex < 12) {
+      monthWordCounts[monthIndex] += source.value - previousValue;
+    }
+    busiestDayWords = Math.max(busiestDayWords, source.value);
+  }
+  return { noteDates, wordsByDate, busiestDayWords, monthNoteCounts, monthWordCounts };
+}
 
 export function yearWritingIntensity(words: number, busiestDayWords: number): WritingIntensity | null {
   if (words <= 0 || busiestDayWords <= 0) return null;

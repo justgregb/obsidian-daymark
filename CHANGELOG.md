@@ -2,6 +2,10 @@
 
 ## 0.1.0 — 2026-08-12
 
+- Coalesced index and metadata refreshes into one animation-frame render, delegated Month/Week keyboard navigation to their containers, and removed temporary date strings from active-file synchronization.
+- Clarified Tally documentation around measurable counters such as distance, repetitions, sessions, and lessons.
+- Made the selected or open day explicit beside its Year-view month label, placed its month first in the keyboard tab order, and retained the compact activity-map layout.
+- Built Year activity and monthly totals from one cached-period lookup instead of repeating date-index queries or allocating an intermediate object for every calendar square.
 - Prepared Daymark for Obsidian review with atomic report updates, sidebar-state preservation across reloads, compatibility-safe leaf revealing, native settings headings, production minification, official lint checks, and complete runtime-asset verification.
 - Preserved cached Week, Month, and Year totals across unrelated note edits; reduced full-index date discovery, Year activity allocations, date-comparison allocations, and additional-folder prose intermediates without changing results or UI behavior.
 - Reduced repeated report grouping and Year-view activity passes, reused shared date formatting, and simplified report mode metadata without changing rendered reports or Calendar behavior.

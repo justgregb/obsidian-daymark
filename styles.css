@@ -429,9 +429,12 @@
 }
 
 .daymark-year-month-title {
-  display: block;
+  align-items: baseline;
+  display: flex;
   font-size: calc(var(--font-adaptive-smallest, var(--font-ui-smaller)) - 1px);
   font-weight: var(--font-semibold);
+  gap: 2px;
+  justify-content: space-between;
   letter-spacing: 0.07em;
   line-height: 1.2;
   margin: 0 0 4px;
@@ -439,6 +442,19 @@
   text-overflow: ellipsis;
   text-transform: uppercase;
   white-space: nowrap;
+}
+
+.daymark-year-month-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.daymark-year-selected-day {
+  color: var(--text-accent);
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
 }
 
 .daymark-year-activity {

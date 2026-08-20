@@ -3,6 +3,7 @@ import {
   calendarGridDates,
   calendarWeekDates,
   calendarWeekdays,
+  calendarYearActivityIndex,
   calendarYearActivityDates,
   yearWritingIntensity
 } from "./calendar-grid";
@@ -14,10 +15,12 @@ import {
   moveYearViewport,
   selectCalendarDate,
   type CalendarViewportState,
+  yearMonthFocusIndex,
   yearMonthNavigationIndex
 } from "./calendar-state";
 import { isSupportedCoverPath } from "./cover";
 import {
+  datesEqual,
   getPeriodBounds,
   formatPeriodTitle,
   parseIsoDate,
@@ -71,6 +74,7 @@ export class DaymarkCalendarView extends ItemView {
   private shortWeekdayNames: string[] = [];
   private renderSelectedIso = "";
   private renderTodayIso = "";
+  private renderFrame: number | null = null;
   private renderVersion = 0;
   private readonly inlineTally: InlineTally;
 
@@ -125,11 +129,11 @@ export class DaymarkCalendarView extends ItemView {
   override async onOpen(): Promise<void> {
     this.containerEl.addClass("daymark-calendar-container");
     this.opened = true;
-    this.unsubscribe = this.plugin.subscribe(() => this.render());
+    this.unsubscribe = this.plugin.subscribe(() => this.scheduleRender());
     this.registerEvent(this.app.workspace.on("file-open", (file) => this.syncToFile(file)));
     this.registerEvent(this.app.metadataCache.on("changed", (file) => {
       const record = this.plugin.index.recordForDate(this.selectedDate);
-      if (record?.path === file.path) this.render();
+      if (record?.path === file.path) this.scheduleRender();
     }));
     this.renderLoading();
     try {
@@ -143,6 +147,7 @@ export class DaymarkCalendarView extends ItemView {
 
   override async onClose(): Promise<void> {
     this.opened = false;
+    this.cancelScheduledRender();
     this.containerEl.removeClass("daymark-calendar-container");
     this.unsubscribe?.();
     this.unsubscribe = null;
@@ -167,6 +172,7 @@ export class DaymarkCalendarView extends ItemView {
 
   private render(): void {
     if (!this.opened) return;
+    this.cancelScheduledRender();
     const renderVersion = ++this.renderVersion;
     this.prepareRenderContext();
     const weekStart = this.plugin.resolveWeekStart();
@@ -300,63 +306,55 @@ export class DaymarkCalendarView extends ItemView {
   ): void {
     const section = parent.createDiv("daymark-year-section");
     const months = section.createDiv("daymark-year-months");
-    const wordsByDate = new Map<string, number>();
-    let busiestDayWords = 0;
-    for (const source of aggregate.wordSources) {
-      wordsByDate.set(source.isoDate, source.value);
-      busiestDayWords = Math.max(busiestDayWords, source.value);
-    }
+    const activityIndex = calendarYearActivityIndex(aggregate.noteSources, aggregate.wordSources);
     for (let month = 1; month <= 12; month += 1) {
       const first = { year, month, day: 1 };
       const dates = calendarYearActivityDates(first, weekStart);
-      let noteCount = 0;
-      let wordCount = 0;
-      const activityDates = dates.map((date) => {
-        const isoDate = date ? toIsoDate(date) : null;
-        const hasNote = date ? this.plugin.index.recordForDate(date) !== null : false;
-        const words = isoDate ? wordsByDate.get(isoDate) ?? 0 : 0;
-        if (hasNote) noteCount += 1;
-        wordCount += words;
-        return {
-          date,
-          isoDate,
-          hasNote,
-          words
-        };
-      });
+      const noteCount = activityIndex.monthNoteCounts[month - 1] ?? 0;
+      const wordCount = activityIndex.monthWordCounts[month - 1] ?? 0;
       const monthLabel = this.monthFormatter.format(toDate(first));
       const selectedMonth = this.selectedDate.year === year && this.selectedDate.month === month;
+      const selectedDateDescription = selectedMonth
+        ? ` Selected date ${this.fullDateFormatter.format(toDate(this.selectedDate))}.`
+        : "";
       const button = months.createEl("button", {
         cls: `daymark-year-month${selectedMonth ? " is-selected-month" : ""}`
       });
       button.dataset.month = toIsoDate(first);
       button.setAttr(
         "aria-label",
-        `${monthLabel} ${year}, ${noteCount} ${noteCount === 1 ? "daily note" : "daily notes"}, ${wordCount} ${wordCount === 1 ? "word" : "words"}. Show month view.`
+        `${monthLabel} ${year}, ${noteCount} ${noteCount === 1 ? "daily note" : "daily notes"}, ${wordCount} ${wordCount === 1 ? "word" : "words"}.${selectedDateDescription} Show month view.`
       );
       button.setAttr("aria-keyshortcuts", "ArrowLeft ArrowRight ArrowUp ArrowDown Home End");
-      button.createSpan({ cls: "daymark-year-month-title", text: monthLabel });
+      const title = button.createSpan("daymark-year-month-title");
+      title.createSpan({ cls: "daymark-year-month-label", text: monthLabel });
+      if (selectedMonth) {
+        title.createSpan({ cls: "daymark-year-selected-day", text: String(this.selectedDate.day) });
+      }
       const activity = button.createSpan("daymark-year-activity");
       activity.setAttr("aria-hidden", "true");
 
-      for (let index = 0; index < activityDates.length; index += 1) {
-        const entry = activityDates[index];
-        if (!entry?.date || !entry.isoDate) {
+      for (let index = 0; index < dates.length; index += 1) {
+        const date = dates[index];
+        if (!date) {
           activity.createSpan("daymark-year-mark is-empty");
           continue;
         }
+        const isoDate = toIsoDate(date);
+        const hasNote = activityIndex.noteDates.has(isoDate);
+        const words = activityIndex.wordsByDate.get(isoDate) ?? 0;
         const weekday = ((weekStart + index) % 7) as Weekday;
-        const intensity = yearWritingIntensity(entry.words, busiestDayWords);
+        const intensity = yearWritingIntensity(words, activityIndex.busiestDayWords);
         const classes = [
           "daymark-year-mark",
           this.plugin.settings.highlightedWeekdays.includes(weekday) ? "is-highlighted" : "",
-          entry.hasNote ? "has-note" : "",
+          hasNote ? "has-note" : "",
           intensity ? `has-writing-${intensity}` : "",
-          entry.isoDate === this.renderTodayIso ? "is-today" : "",
-          entry.isoDate === this.renderSelectedIso ? "is-selected" : ""
+          isoDate === this.renderTodayIso ? "is-today" : "",
+          isoDate === this.renderSelectedIso ? "is-selected" : ""
         ].filter(Boolean).join(" ");
         const mark = activity.createSpan(classes);
-        mark.dataset.date = entry.isoDate;
+        mark.dataset.date = isoDate;
       }
 
       button.addEventListener("click", () => {
@@ -365,6 +363,14 @@ export class DaymarkCalendarView extends ItemView {
       });
       button.addEventListener("keydown", (event) => this.handleYearMonthKeydown(event, button, months));
     }
+    const buttons = Array.from(months.querySelectorAll<HTMLButtonElement>(".daymark-year-month"));
+    const focusIndex = yearMonthFocusIndex(this.displayedMonth, this.selectedDate, year);
+    buttons.forEach((button, index) => {
+      button.tabIndex = index === focusIndex ? 0 : -1;
+      button.addEventListener("focus", () => {
+        buttons.forEach((candidate) => { candidate.tabIndex = candidate === button ? 0 : -1; });
+      });
+    });
   }
 
   private handleYearMonthKeydown(
@@ -688,14 +694,28 @@ export class DaymarkCalendarView extends ItemView {
     const date = this.plugin.index.dateForFile(file);
     if (!date) return;
     const displayedMonth = firstOfMonth(date);
-    if (toIsoDate(this.selectedDate) === toIsoDate(date)
-      && toIsoDate(this.displayedMonth) === toIsoDate(displayedMonth)
-      && toIsoDate(this.displayedWeek) === toIsoDate(date)) return;
+    if (datesEqual(this.selectedDate, date)
+      && datesEqual(this.displayedMonth, displayedMonth)
+      && datesEqual(this.displayedWeek, date)) return;
     this.selectedDate = date;
     this.displayedMonth = displayedMonth;
     this.displayedWeek = date;
     this.saveViewState();
     if (shouldRender) this.render();
+  }
+
+  private scheduleRender(): void {
+    if (!this.opened || this.renderFrame !== null) return;
+    this.renderFrame = window.requestAnimationFrame(() => {
+      this.renderFrame = null;
+      this.render();
+    });
+  }
+
+  private cancelScheduledRender(): void {
+    if (this.renderFrame === null) return;
+    window.cancelAnimationFrame(this.renderFrame);
+    this.renderFrame = null;
   }
 
   private saveViewState(): void {

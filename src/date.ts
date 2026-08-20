@@ -108,6 +108,10 @@ export function compareDates(left: PlainDate, right: PlainDate): number {
   return sortableDateValue(left) - sortableDateValue(right);
 }
 
+export function datesEqual(left: PlainDate, right: PlainDate): boolean {
+  return left.year === right.year && left.month === right.month && left.day === right.day;
+}
+
 export function getPeriodBounds(anchor: PlainDate, mode: PeriodMode, weekStart: Weekday): PeriodBounds {
   if (mode === "week") {
     const weekday = toDate(anchor).getUTCDay() as Weekday;
