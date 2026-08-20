@@ -1,6 +1,6 @@
 {
   "name": "obsidian-daymark",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "A local-first daily journal calendar with Tally summaries for Obsidian.",
   "type": "module",
   "private": true,
