@@ -4,7 +4,7 @@ Daymark is a calm, local-first journal for Obsidian. It keeps your dated Markdow
 
 There are no accounts, analytics, or network requests. Your journal stays in ordinary Markdown files inside your vault.
 
-![Daymark calendar and Tally beside a daily note in Obsidian](images/daymark-overview.jpeg)
+![Daymark calendar and Tally beside a daily note in Obsidian](images/daymark-overview.png)
 
 ## Calendar
 
