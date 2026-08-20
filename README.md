@@ -4,6 +4,8 @@ Daymark is a calm, local-first journal for Obsidian. It keeps your dated Markdow
 
 There are no accounts, analytics, or network requests. Your journal stays in ordinary Markdown files inside your vault.
 
+![Daymark beside a daily note in Obsidian](images/daymark-overview.png)
+
 ## Calendar
 
 Open Daymark from the ribbon or run **Daymark: Open calendar**.
@@ -15,6 +17,8 @@ Open Daymark from the ribbon or run **Daymark: Open calendar**.
 - Choose the first day of the week and softly shade recurring days such as weekends.
 
 Year view brings all twelve months together in a compact activity overview. The selected or open day appears beside its month label, and selecting a month opens it at full size.
+
+![Daymark Week, Month, and Year calendar views](images/calendar-views.png)
 
 Daymark follows your chosen journal folder and date format, including nested paths such as `YYYY/MM/YYYY-MM-DD`. It does not require Obsidian's Daily Notes plugin or another calendar plugin.
 
@@ -58,6 +62,8 @@ Name each tag after the thing being counted. For example:
 This adds `14` to Kilometres cycled. A checked tagged line without a number adds `1`, so the second line adds one Language lesson. Tagged lines belong only to their tagged counter; they are not counted a second time under Checked items. Checked items is reserved for ordinary checkbox lines without hashtags.
 
 Photos counts local image embeds in your daily notes, including cover images. Select **Save** to create a clean Markdown report with an at-a-glance summary and chronological activity and Tally tables for Days, Weeks, or Months. Daymark will not overwrite an ordinary note that happens to share a report filename.
+
+![A saved Daymark Tally report with yearly totals and monthly breakdowns](images/tally-report.png)
 
 Use **Display names** in Daymark settings to rename Daily notes, Words, Photos, or any discovered hashtag without changing your notes. For example, Photos can appear as **Images**, and `#running` can appear as **Kilometres run**, in both the sidebar and saved reports. Clearing a name restores Daymark’s automatic one.
 
