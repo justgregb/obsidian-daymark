@@ -73,6 +73,7 @@ export class DaymarkCalendarView extends ItemView {
   private highlightedWeekdayMask = 0;
   private renderFrame: number | null = null;
   private renderVersion = 0;
+  private footerEl: HTMLElement | null = null;
   private readonly inlineTally: InlineTally;
 
   constructor(leaf: WorkspaceLeaf, private readonly plugin: DaymarkPlugin) {
@@ -151,6 +152,7 @@ export class DaymarkCalendarView extends ItemView {
   }
 
   private renderLoading(): void {
+    this.footerEl = null;
     this.contentEl.empty();
     this.contentEl.addClass("daymark-calendar-view");
     this.contentEl.removeClass("has-footer");
@@ -158,6 +160,7 @@ export class DaymarkCalendarView extends ItemView {
   }
 
   private renderError(error: unknown): void {
+    this.footerEl = null;
     this.contentEl.empty();
     this.contentEl.addClass("daymark-calendar-view");
     this.contentEl.removeClass("has-footer");
@@ -178,6 +181,7 @@ export class DaymarkCalendarView extends ItemView {
     const aggregate = this.plugin.index.aggregate(bounds);
     const root = this.contentEl;
     this.dayCellSequence = 0;
+    this.footerEl = null;
     root.empty();
     root.addClass("daymark-calendar-view");
     root.toggleClass("is-week-view", this.mode === "week");
@@ -504,9 +508,11 @@ export class DaymarkCalendarView extends ItemView {
   }
 
   private createFooter(parent: HTMLElement, aggregate: PeriodAggregate, renderVersion: number): void {
+    this.footerEl = null;
     if (!this.plugin.settings.showCalendarTotals && !this.plugin.settings.tallyEnabled) return;
 
     const footer = parent.createDiv("daymark-calendar-footer");
+    this.footerEl = footer;
     const expanded = this.plugin.settings.tallyEnabled && this.tallyExpanded;
     footer.toggleClass("is-expanded", expanded);
 
@@ -556,9 +562,24 @@ export class DaymarkCalendarView extends ItemView {
     tally.addEventListener("click", () => {
       this.tallyExpanded = !expanded;
       this.saveViewState();
-      this.render();
-      if (expanded) this.contentEl.scrollTop = 0;
+      this.renderFooterOnly();
     });
+  }
+
+  private renderFooterOnly(): void {
+    if (!this.opened) return;
+    const weekStart = this.plugin.resolveWeekStart();
+    const anchor = this.mode === "week" ? this.displayedWeek : this.displayedMonth;
+    const bounds = getPeriodBounds(anchor, this.mode, weekStart);
+    const aggregate = this.plugin.index.aggregate(bounds);
+    const renderVersion = ++this.renderVersion;
+    this.contentEl.toggleClass(
+      "is-tally-expanded",
+      this.plugin.settings.tallyEnabled && this.tallyExpanded
+    );
+    this.footerEl?.remove();
+    this.footerEl = null;
+    this.createFooter(this.contentEl, aggregate, renderVersion);
   }
 
   private formatNumber(value: number): string {
@@ -632,7 +653,7 @@ export class DaymarkCalendarView extends ItemView {
     if (this.tallyExpanded) return;
     this.tallyExpanded = true;
     this.saveViewState();
-    this.render();
+    this.renderFooterOnly();
   }
 
   async saveCurrentTallyPeriod(): Promise<void> {

@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Kept the calendar at a stable size when Tally is folded or unfolded, and updated only the footer so mobile cover images stay mounted instead of reloading.
+
 ## 0.2.3 — 2026-08-20
 
 - Added a GitHub Actions release workflow that builds, validates, cryptographically attests, and publishes the three Obsidian release assets from each version tag.

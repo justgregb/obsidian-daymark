@@ -72,12 +72,27 @@ describe("responsive visual fixture matrix", () => {
     expect(fixture).toContain('const modes = ["week", "month", "year"]');
     expect(fixture).toContain("fixture.dataset.mode = mode;");
     expect(calendarStyles).toMatch(
-      /\.daymark-calendar-container \.view-content\.daymark-calendar-view\.is-tally-expanded \{[^}]*overflow-y: auto;[^}]*scrollbar-gutter: stable;/s
+      /\.daymark-calendar-container \.view-content\.daymark-calendar-view \{[^}]*overflow-y: auto;[^}]*scrollbar-gutter: stable;/s
     );
+    expect(calendarStyles).not.toContain("daymark-calendar-view:not(.is-tally-expanded)");
     expect(calendarStyles).not.toContain("!important");
     expect(calendarStyles).not.toContain(
       ".daymark-calendar-container > .view-content.is-tally-expanded"
     );
+  });
+
+  it("folds Tally without rebuilding calendar or cover image nodes", () => {
+    expect(calendarViewSource).toContain("private renderFooterOnly(): void");
+    const toggleStart = calendarViewSource.indexOf("private createTallyToggle");
+    const toggleEnd = calendarViewSource.indexOf("private renderFooterOnly", toggleStart);
+    const toggleSource = calendarViewSource.slice(toggleStart, toggleEnd);
+    expect(toggleSource).toContain("this.renderFooterOnly();");
+    expect(toggleSource).not.toContain("this.render();");
+    const footerEnd = calendarViewSource.indexOf("private formatNumber", toggleEnd);
+    const footerSource = calendarViewSource.slice(toggleEnd, footerEnd);
+    expect(footerSource).not.toContain(".empty()");
+    expect(footerSource).not.toContain("createMonthView");
+    expect(footerSource).not.toContain("createWeekView");
   });
 
   it("keeps the Tally disclosure in the left-hand slot in both states", () => {

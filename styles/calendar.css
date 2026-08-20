@@ -3,8 +3,11 @@
   overflow: hidden;
 }
 
-.daymark-calendar-container .view-content.daymark-calendar-view:not(.is-tally-expanded) {
-  overflow: hidden;
+.daymark-calendar-container .view-content.daymark-calendar-view {
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
 }
 
 .daymark-calendar-view {
@@ -196,13 +199,6 @@
   max-width: 100%;
   min-width: 0;
   overflow: visible;
-}
-
-.daymark-calendar-container .view-content.daymark-calendar-view.is-tally-expanded {
-  overflow-x: hidden;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-gutter: stable;
 }
 
 .daymark-calendar-view .daymark-calendar-nav:hover {
