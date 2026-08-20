@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.3 — 2026-08-20
+
+- Added a GitHub Actions release workflow that builds, validates, cryptographically attests, and publishes the three Obsidian release assets from each version tag.
+- Limited journal and additional-writing rebuilds to their configured folders instead of enumerating every Markdown file in the vault.
+- Moved Settings to Obsidian's searchable declarative API and raised the minimum supported Obsidian version to 1.13.0.
+- Added a typed boundary around Obsidian's Moment export so strict source review no longer reports unsafe values, calls, assignments, arguments, or member access.
+- Replaced partially supported CSS and `!important` overrides with equivalent grid gaps, accessible clipping, and higher-specificity scoped rules.
+
 ## 0.2.2 — 2026-08-20
 
 - Added an optional Ko-fi support link through Obsidian's standard funding field and the README.

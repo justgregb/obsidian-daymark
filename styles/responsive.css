@@ -36,9 +36,8 @@
 
 @container daymark-sidebar (min-width: 560px) {
   .daymark-year-months {
-    column-gap: var(--size-4-3);
+    gap: var(--size-4-2) var(--size-4-3);
     max-width: 760px;
-    row-gap: var(--size-4-2);
   }
 }
 
@@ -104,40 +103,13 @@
     margin-bottom: var(--size-4-6);
   }
 
-  .daymark-settings-card {
+  .daymark-settings-section .setting-group-list {
     border-radius: var(--radius-m);
     padding: 0 var(--size-4-2);
   }
 
-  .daymark-settings-card > .setting-item,
-  .daymark-tally-labels > .setting-item,
-  .daymark-tally-label-group-rows > .setting-item {
-    align-items: stretch;
-    flex-direction: column;
-    gap: var(--size-4-3);
-    padding-left: var(--size-4-1);
-    padding-right: var(--size-4-1);
-  }
-
-  .daymark-settings-card .setting-item-control {
-    justify-content: flex-start;
-    width: 100%;
-  }
-
-  .daymark-settings-card > .daymark-setting-toggle {
-    align-items: center;
-    flex-direction: row;
-    gap: var(--size-4-4);
-  }
-
-  .daymark-settings-card > .daymark-setting-toggle .setting-item-control {
-    flex: 0 0 auto;
-    justify-content: flex-end;
-    width: auto;
-  }
-
-  .daymark-settings-card input[type="text"],
-  .daymark-settings-card select {
+  .daymark-settings-section input[type="text"],
+  .daymark-settings-section select {
     width: 100%;
   }
 
@@ -156,7 +128,7 @@
     width: 100%;
   }
 
-  .daymark-settings-card .daymark-weekday-button {
+  .daymark-settings-section .daymark-weekday-button {
     width: 100%;
   }
 }

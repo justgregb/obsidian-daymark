@@ -1,13 +1,11 @@
 import { describe, expect, it } from "vitest";
+import type { TFile } from "obsidian";
 import {
   AdditionalWordIndex,
   additionalWordFolderLabel,
   pathIsInAdditionalWordFolder
 } from "../src/additional-word-index";
-
-interface FakeFile {
-  path: string;
-}
+import { fakeFile, fakeFolder } from "./obsidian-fakes";
 
 describe("additional word-count folder", () => {
   it("matches Markdown files recursively without leaking across folder boundaries", () => {
@@ -21,12 +19,10 @@ describe("additional word-count folder", () => {
   });
 
   it("builds and incrementally updates one all-time prose total", async () => {
-    const files: FakeFile[] = [
-      { path: "Desk/Longform/Novel.md" },
-      { path: "Desk/Longform/Act 1/Scene.md" },
-      { path: "Desk/Longform/Tally — 2026.md" },
-      { path: "Desk/Inbox/Other.md" }
-    ];
+    const novel = fakeFile("Desk/Longform/Novel.md");
+    const scene = fakeFile("Desk/Longform/Act 1/Scene.md");
+    const tally = fakeFile("Desk/Longform/Tally — 2026.md");
+    const longform = fakeFolder("Desk/Longform", [novel, fakeFolder("Desk/Longform/Act 1", [scene]), tally]);
     const contents = new Map<string, string>([
       ["Desk/Longform/Novel.md", "---\ntype: draft\n---\n# Opening\nOne two three.\n- ignored list words"],
       ["Desk/Longform/Act 1/Scene.md", "Γεια σου"],
@@ -35,8 +31,9 @@ describe("additional word-count folder", () => {
     ]);
     const app = {
       vault: {
-        getMarkdownFiles: () => files,
-        cachedRead: async (file: FakeFile) => contents.get(file.path) ?? ""
+        getFolderByPath: (path: string) => path === "Desk/Longform" ? longform : null,
+        getRoot: () => fakeFolder(""),
+        cachedRead: async (file: TFile) => contents.get(file.path) ?? ""
       }
     } as unknown as ConstructorParameters<typeof AdditionalWordIndex>[0];
     const index = new AdditionalWordIndex(app, () => "Desk/Longform", () => "en-US");
@@ -45,13 +42,14 @@ describe("additional word-count folder", () => {
     expect(index.totalWords).toBe(6);
 
     contents.set("Desk/Longform/Novel.md", "One two");
-    await index.refresh(files[0] as never);
+    await index.refresh(novel);
     expect(index.totalWords).toBe(4);
 
     index.remove("Desk/Longform/Act 1/Scene.md");
     expect(index.totalWords).toBe(2);
 
-    files.splice(0, files.length, { path: "Desk/Longform/Replacement.md" });
+    const replacement = fakeFile("Desk/Longform/Replacement.md");
+    longform.children.splice(0, longform.children.length, replacement);
     contents.set("Desk/Longform/Replacement.md", "A completely new draft");
     await index.rebuild();
     expect(index.totalWords).toBe(4);
@@ -64,9 +62,13 @@ describe("additional word-count folder", () => {
     let scans = 0;
     const app = {
       vault: {
-        getMarkdownFiles: () => {
+        getFolderByPath: () => {
           scans += 1;
-          return [];
+          return null;
+        },
+        getRoot: () => {
+          scans += 1;
+          return fakeFolder("");
         }
       }
     } as unknown as ConstructorParameters<typeof AdditionalWordIndex>[0];

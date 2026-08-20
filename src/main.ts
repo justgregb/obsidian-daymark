@@ -1,4 +1,4 @@
-import { moment, normalizePath, Notice, Plugin, TFile, TFolder, type TAbstractFile, type WorkspaceLeaf } from "obsidian";
+import { normalizePath, Notice, Plugin, TFile, TFolder, type TAbstractFile, type WorkspaceLeaf } from "obsidian";
 import { AdditionalWordIndex } from "./additional-word-index";
 import { DAYMARK_CALENDAR_VIEW_TYPE, DaymarkCalendarView } from "./calendar-view";
 import { confirmDailyNoteCreation } from "./create-note-modal";
@@ -7,6 +7,7 @@ import { parseIsoDate, todayPlainDate } from "./date";
 import { promptForDate } from "./go-to-date-modal";
 import { DaymarkIndex } from "./indexer";
 import { isValidObsidianDateFormat } from "./obsidian-date";
+import { daymarkMoment } from "./obsidian-moment";
 import { legacyTallyToDaymarkState } from "./legacy-tally-state";
 import { LEGACY_TALLY_VIEW_TYPE, LegacyTallyView } from "./legacy-tally-view";
 import { appendQuickLogEntry, createQuickLogEntry } from "./quick-log";
@@ -64,7 +65,7 @@ export default class DaymarkPlugin extends Plugin {
   private additionalWordRebuildTimer: number | null = null;
 
   get locale(): string {
-    return moment.locale();
+    return daymarkMoment.locale();
   }
 
   override async onload(): Promise<void> {
@@ -157,11 +158,11 @@ export default class DaymarkPlugin extends Plugin {
   }
 
   resolveWeekStart(): Weekday {
-    return resolveWeekStartSetting(this.settings.weekStart, moment.localeData().firstDayOfWeek());
+    return resolveWeekStartSetting(this.settings.weekStart, daymarkMoment.localeData().firstDayOfWeek());
   }
 
   resolveLocaleWeekStart(): Weekday {
-    return resolveWeekStartSetting("locale", moment.localeData().firstDayOfWeek());
+    return resolveWeekStartSetting("locale", daymarkMoment.localeData().firstDayOfWeek());
   }
 
   async updateSettings(change: Partial<DaymarkSettings>): Promise<void> {

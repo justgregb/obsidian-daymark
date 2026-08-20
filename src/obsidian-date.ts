@@ -1,4 +1,4 @@
-import { moment } from "obsidian";
+import { daymarkMoment } from "./obsidian-moment";
 import type { PlainDate } from "./types";
 
 const FORMAT_SAMPLES = [
@@ -7,17 +7,17 @@ const FORMAT_SAMPLES = [
 ] as const;
 
 function sampleMoment(date: PlainDate) {
-  return moment([date.year, date.month - 1, date.day]);
+  return daymarkMoment([date.year, date.month - 1, date.day]);
 }
 
 export function parseObsidianDateFormat(value: string, format: string): PlainDate | null {
-  const parsed = moment(value, format, true);
+  const parsed = daymarkMoment(value, format, true);
   if (!parsed.isValid()) return null;
   return { year: parsed.year(), month: parsed.month() + 1, day: parsed.date() };
 }
 
 export function previewObsidianDateFormat(format: string): string {
-  return moment().format(format);
+  return daymarkMoment().format(format);
 }
 
 export function isValidObsidianDateFormat(format: string): boolean {

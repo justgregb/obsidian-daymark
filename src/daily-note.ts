@@ -1,9 +1,10 @@
-import { moment, normalizePath } from "obsidian";
+import { normalizePath } from "obsidian";
 import { toIsoDate } from "./date";
+import { daymarkMoment } from "./obsidian-moment";
 import type { PlainDate } from "./types";
 
 function dateMoment(date: PlainDate) {
-  return moment([date.year, date.month - 1, date.day]);
+  return daymarkMoment([date.year, date.month - 1, date.day]);
 }
 
 export function dailyNotePath(folder: string, format: string, date: PlainDate): string {
@@ -18,7 +19,7 @@ export function renderDailyNoteTemplate(
   now = new Date()
 ): string {
   const selected = dateMoment(date);
-  const current = moment(now);
+  const current = daymarkMoment(now);
   const title = selected.format(filenameFormat).split("/").pop() ?? toIsoDate(date);
   return template
     .replace(/\{\{date(?::([^}]+))?\}\}/gu, (_match, format: string | undefined) => selected.format(format ?? "YYYY-MM-DD"))

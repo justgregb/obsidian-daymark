@@ -72,8 +72,9 @@ describe("responsive visual fixture matrix", () => {
     expect(fixture).toContain('const modes = ["week", "month", "year"]');
     expect(fixture).toContain("fixture.dataset.mode = mode;");
     expect(calendarStyles).toMatch(
-      /\.daymark-calendar-view\.is-tally-expanded \{[^}]*overflow-y: auto !important;[^}]*scrollbar-gutter: stable;/s
+      /\.daymark-calendar-container \.view-content\.daymark-calendar-view\.is-tally-expanded \{[^}]*overflow-y: auto;[^}]*scrollbar-gutter: stable;/s
     );
+    expect(calendarStyles).not.toContain("!important");
     expect(calendarStyles).not.toContain(
       ".daymark-calendar-container > .view-content.is-tally-expanded"
     );
@@ -140,16 +141,18 @@ describe("responsive visual fixture matrix", () => {
     expect(settingsSource).toContain("Hashtag tallies");
     expect(settingsSource).toContain("text.inputEl.maxLength = 80");
     expect(settingsSource).toContain("daymark-tally-label-core-row");
-    expect(settingsSource).toContain("daymark-setting-toggle");
-    expect(settingsStyles).toContain(".daymark-tally-label-group");
+    expect(settingsSource).toContain("getSettingDefinitions(): SettingDefinitionItem[]");
+    expect(settingsSource).toContain('control: { type: "toggle", key: "tallyEnabled" }');
+    expect(settingsSource).not.toContain("override display()");
+    expect(settingsStyles).toContain(".daymark-tally-label-group-heading");
     expect(settingsStyles).toContain(".daymark-tally-label-row");
     expect(settingsStyles).toMatch(
       /\.daymark-tally-label-row \.setting-item-name \{[^}]*overflow: hidden;[^}]*text-overflow: ellipsis;/s
     );
     expect(settingsStyles).toMatch(
-      /\.daymark-settings-card input\[type="text"\] \{[^}]*max-width: 100%;/s
+      /\.daymark-settings-section input\[type="text"\] \{[^}]*max-width: 100%;/s
     );
-    expect(responsiveStyles).toContain(".daymark-tally-label-group-rows > .setting-item");
-    expect(responsiveStyles).toContain(".daymark-settings-card > .daymark-setting-toggle");
+    expect(responsiveStyles).toContain(".daymark-settings-section input[type=\"text\"]");
+    expect(settingsStyles).not.toContain("!important");
   });
 });

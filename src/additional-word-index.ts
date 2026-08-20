@@ -1,5 +1,6 @@
 import type { App, TFile } from "obsidian";
 import { countMarkdownProseWords } from "./parser";
+import { markdownFilesInFolder } from "./vault-files";
 
 function normalizeFolder(value: string): string {
   return value.trim().replace(/\\/gu, "/").replace(/\/{2,}/gu, "/").replace(/^\/+|\/+$/gu, "");
@@ -85,7 +86,7 @@ export class AdditionalWordIndex {
       this.ready = true;
       return;
     }
-    const files = this.app.vault.getMarkdownFiles().filter((file) => this.matches(file));
+    const files = markdownFilesInFolder(this.app.vault, this.getFolder()).filter((file) => this.matches(file));
     const parsed = await Promise.all(files.map(async (file) => {
       const content = await this.app.vault.cachedRead(file);
       return [file.path, countMarkdownProseWords(content, this.getLocale())] as const;

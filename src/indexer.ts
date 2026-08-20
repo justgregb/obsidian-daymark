@@ -5,6 +5,7 @@ import { parseObsidianDateFormat } from "./obsidian-date";
 import { parseDailyNote } from "./parser";
 import { DaymarkStore } from "./store";
 import type { DailyRecord, DaymarkSettings, PeriodAggregate, PeriodBounds, PlainDate } from "./types";
+import { markdownFilesInFolder } from "./vault-files";
 
 export class DaymarkIndex {
   private readonly store = new DaymarkStore();
@@ -67,7 +68,7 @@ export class DaymarkIndex {
 
   private async performRebuild(): Promise<void> {
     const candidates: Array<{ file: TFile; date: PlainDate }> = [];
-    for (const file of this.app.vault.getMarkdownFiles()) {
+    for (const file of markdownFilesInFolder(this.app.vault, this.getSettings().journalFolder)) {
       const date = this.dateForFile(file);
       if (date) candidates.push({ file, date });
     }

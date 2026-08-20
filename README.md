@@ -91,6 +91,8 @@ Daymark counts journal prose while ignoring frontmatter, code, URLs, images, Mar
 
 All three files are required. If `styles.css` is missing, Daymark will load without its layout and visual styling.
 
+Release assets are built and attested by GitHub Actions. After downloading an asset, you can verify its source with `gh attestation verify <file> -R justgregb/obsidian-daymark`.
+
 ### Build from source
 
 Building Daymark requires Git and Node.js.
@@ -118,7 +120,7 @@ After the build succeeds, copy `main.js`, `manifest.json`, and `styles.css` into
 
 ## Compatibility
 
-- Obsidian 1.4.10 or newer
+- Obsidian 1.13.0 or newer
 - Desktop and mobile
 
 ## Support
@@ -127,7 +129,7 @@ Daymark is free and open source. If it makes journaling a little nicer, you can 
 
 ## Release status
 
-Version `0.2.2` is available as a manual GitHub release. Daymark has not yet been submitted to Obsidian's community plugin directory.
+Version `0.2.3` is available as a manual GitHub release. Daymark has not yet been submitted to Obsidian's community plugin directory.
 
 ## License
 

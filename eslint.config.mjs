@@ -33,14 +33,6 @@ export default tseslint.config(
     }
   },
   {
-    files: ["src/settings.ts"],
-    rules: {
-      "@typescript-eslint/no-deprecated": "off",
-      "obsidianmd/settings-tab/prefer-setting-definitions": "off",
-      "obsidianmd/settings-tab/prefer-update-over-display": "off"
-    }
-  },
-  {
     files: ["tests/obsidian-mock.ts"],
     rules: {
       "@typescript-eslint/no-restricted-imports": "off",

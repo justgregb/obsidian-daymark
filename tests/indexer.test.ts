@@ -1,37 +1,32 @@
 import { describe, expect, it } from "vitest";
+import type { TFile } from "obsidian";
 import { getPeriodBounds } from "../src/date";
 import { DaymarkIndex } from "../src/indexer";
 import type { DaymarkSettings } from "../src/types";
-
-interface FakeFile {
-  readonly path: string;
-  readonly basename: string;
-}
+import { fakeFile, fakeFolder } from "./obsidian-fakes";
 
 describe("daily-note index", () => {
-  it("discovers each matching date once during a full rebuild", async () => {
-    const pathReads = new Map<string, number>();
-    const makeFile = (path: string): FakeFile => ({
-      get path() {
-        pathReads.set(path, (pathReads.get(path) ?? 0) + 1);
-        return path;
-      },
-      basename: path.slice(path.lastIndexOf("/") + 1, -3)
-    });
+  it("rebuilds only from Markdown files inside the configured journal folder", async () => {
     const firstPath = "Journal/2026/08/2026-08-10.md";
     const secondPath = "Journal/2026/08/2026-08-12.md";
-    const unrelatedPath = "Desk/notes.md";
-    const first = makeFile(firstPath);
-    const second = makeFile(secondPath);
-    const unrelated = makeFile(unrelatedPath);
-    const contents = new Map<FakeFile, string>([
+    const first = fakeFile(firstPath);
+    const second = fakeFile(secondPath);
+    const journal = fakeFolder("Journal", [
+      fakeFolder("Journal/2026", [fakeFolder("Journal/2026/08", [first, second])])
+    ]);
+    const contents = new Map<TFile, string>([
       [first, "One two\n![[cover.jpg]]"],
       [second, "Three four five\n![Detail](Assets/detail.png)"]
     ]);
+    const reads: string[] = [];
     const app = {
       vault: {
-        getMarkdownFiles: () => [first, second, unrelated],
-        cachedRead: async (file: FakeFile) => contents.get(file) ?? ""
+        getFolderByPath: (path: string) => path === "Journal" ? journal : null,
+        getRoot: () => fakeFolder(""),
+        cachedRead: async (file: TFile) => {
+          reads.push(file.path);
+          return contents.get(file) ?? "";
+        }
       }
     } as unknown as ConstructorParameters<typeof DaymarkIndex>[0];
     const settings: DaymarkSettings = {
@@ -56,30 +51,24 @@ describe("daily-note index", () => {
     expect(aggregate.noteCount).toBe(2);
     expect(aggregate.words).toBe(5);
     expect(aggregate.photos).toBe(2);
-    expect(pathReads).toEqual(new Map([
-      [firstPath, 2],
-      [secondPath, 2],
-      [unrelatedPath, 1]
-    ]));
+    expect(reads).toEqual([firstPath, secondPath]);
     expect(index.isReady).toBe(true);
   });
 
   it("tracks known completed-item tags through incremental changes", async () => {
-    const makeFile = (path: string): FakeFile => ({
-      path,
-      basename: path.slice(path.lastIndexOf("/") + 1, -3)
-    });
-    const first = makeFile("Journal/2026-08-10.md");
-    const second = makeFile("Journal/2026-08-11.md");
-    const moved = makeFile("Journal/2026-08-12.md");
-    const contents = new Map<FakeFile, string>([
+    const first = fakeFile("Journal/2026-08-10.md");
+    const second = fakeFile("Journal/2026-08-11.md");
+    const moved = fakeFile("Journal/2026-08-12.md");
+    const journal = fakeFolder("Journal", [first, second]);
+    const contents = new Map<TFile, string>([
       [first, "- [x] 100 #pushups\n- [ ] 5 #unchecked"],
       [second, "- [X] 6 #running"]
     ]);
     const app = {
       vault: {
-        getMarkdownFiles: () => [first, second],
-        cachedRead: async (file: FakeFile) => contents.get(file) ?? ""
+        getFolderByPath: (path: string) => path === "Journal" ? journal : null,
+        getRoot: () => fakeFolder(""),
+        cachedRead: async (file: TFile) => contents.get(file) ?? ""
       }
     } as unknown as ConstructorParameters<typeof DaymarkIndex>[0];
     const settings: DaymarkSettings = {
@@ -103,7 +92,7 @@ describe("daily-note index", () => {
     expect(index.knownTags()).toEqual(["pushups", "running"]);
 
     contents.set(first, "- [x] 12 #cycling");
-    await index.refresh(first as never);
+    await index.refresh(first);
     expect(index.knownTags()).toEqual(["cycling", "running"]);
 
     index.remove(second.path);
@@ -111,7 +100,7 @@ describe("daily-note index", () => {
 
     index.remove(first.path);
     contents.set(moved, "- [x] 3 #language-lessons");
-    await index.refresh(moved as never);
+    await index.refresh(moved);
     expect(index.knownTags()).toEqual(["language-lessons"]);
   });
 });
