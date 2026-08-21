@@ -1,7 +1,7 @@
 {
   "name": "obsidian-daymark",
-  "version": "0.2.4",
-  "description": "A local-first daily journal calendar with Tally summaries for Obsidian.",
+  "version": "0.2.5",
+  "description": "Browse daily notes in week, month, and year calendar views, capture quick thoughts, and summarize journal activity with Tally.",
   "type": "module",
   "private": true,
   "scripts": {

@@ -1,9 +1,9 @@
 {
   "id": "daymark",
   "name": "Daymark",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "minAppVersion": "1.13.0",
-  "description": "A local-first daily journal calendar with Markdown activity and Tally summaries.",
+  "description": "Browse daily notes in week, month, and year calendar views, capture quick thoughts, and summarize journal activity with Tally.",
   "author": "Greg B.",
   "fundingUrl": "https://ko-fi.com/iamgregb",
   "isDesktopOnly": false

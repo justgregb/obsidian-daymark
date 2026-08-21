@@ -131,7 +131,7 @@ Daymark is free and open source. If it makes journaling a little nicer, you can 
 
 ## Release status
 
-Version `0.2.4` is available through Obsidian's Community Plugins directory and as a manual GitHub release.
+Version `0.2.5` is available through Obsidian's Community Plugins directory and as a manual GitHub release.
 
 ## License
 

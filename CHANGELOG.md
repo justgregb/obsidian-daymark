@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.5 — 2026-08-21
+
+- Refreshed Daymark's public documentation with a clearer overview of Calendar, Quick Log, and Tally, an updated main screenshot, and simpler support copy. No runtime behavior changed.
+
 ## 0.2.4 — 2026-08-20
 
 - Kept the calendar at a stable size when Tally is folded or unfolded, and updated only the footer so mobile cover images stay mounted instead of reloading.
