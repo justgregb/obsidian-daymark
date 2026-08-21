@@ -1,8 +1,10 @@
 # Daymark
 
-Daymark is a calm, local-first journal for Obsidian. It keeps your dated Markdown notes close at hand with Week, Month, and Year calendars, quick capture, and simple Tally summaries—all in one sidebar.
+Daymark brings a calm calendar to your daily notes. Browse and open your journal in Week, Month, or Year view, see which days already have notes, and use image covers for a more personal overview.
 
-There are no accounts, analytics, or network requests. Your journal stays in ordinary Markdown files inside your vault.
+Quick Log adds timestamped thoughts to today's note. Tally summarizes writing, photos, checked items, and tagged activities for the selected week, month, or year, and can save those summaries as Markdown reports.
+
+Use your existing journal folder, date format, and daily-note template, including nested paths. Daymark opens existing notes immediately and asks before creating a missing one.
 
 ![Daymark calendar and Tally beside a daily note in Obsidian](images/daymark-overview.png)
 
@@ -125,7 +127,7 @@ After the build succeeds, copy `main.js`, `manifest.json`, and `styles.css` into
 
 ## Support
 
-Daymark is free and open source. If it makes journaling a little nicer, you can [buy me a coffee on Ko-fi](https://ko-fi.com/iamgregb). ☕️
+Daymark is free and open source. If it makes journaling a little nicer, you can [buy me a coffee](https://ko-fi.com/iamgregb). ☕️
 
 ## Release status
 
