@@ -1,0 +1,14 @@
+{
+  "shortDescription": "Browse daily notes in week, month, and year calendar views, capture quick thoughts, and summarize journal activity with Tally.",
+  "githubDescription": "A calm calendar for daily notes in Obsidian, with Week, Month, and Year views, Quick Log, image covers, and Tally summaries.",
+  "communityLongDescription": [
+    "Browse your daily notes in a compact sidebar calendar with week, month, and year views. See which days have notes, add optional image covers, and open existing notes directly.",
+    "Use Quick Log to add timestamped thoughts to today's note. Tally summarizes daily notes, words, photos, checked items, and tagged counters for a selected week, month, or year. Save a Markdown report when you want a lasting overview.",
+    "Daymark follows your journal folder, date format, and daily note template, including nested paths. If a note is missing, Daymark asks before creating it."
+  ],
+  "readmeIntroduction": [
+    "Daymark brings a calm calendar to your daily notes. Browse and open your journal in Week, Month, or Year view, see which days already have notes, and use image covers for a more personal overview.",
+    "Quick Log adds timestamped thoughts to today's note. Tally summarizes writing, photos, checked items, and tagged activities for the selected week, month, or year, and can save those summaries as Markdown reports.",
+    "Use your existing journal folder, date format, and daily-note template, including nested paths. Daymark opens existing notes immediately and asks before creating a missing one."
+  ]
+}

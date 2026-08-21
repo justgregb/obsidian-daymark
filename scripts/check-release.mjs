@@ -1,7 +1,10 @@
 import { readFile, stat } from "node:fs/promises";
+import { checkPublicCopy } from "./public-copy.mjs";
 
 const runtimeFiles = ["manifest.json", "main.js", "styles.css"];
 const MAX_RUNTIME_BYTES = 128 * 1024;
+
+await checkPublicCopy();
 
 const sizes = await Promise.all(runtimeFiles.map(async (path) => {
   const details = await stat(path);

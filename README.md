@@ -110,6 +110,8 @@ npm run lint
 
 After the build succeeds, copy `main.js`, `manifest.json`, and `styles.css` into `<vault>/.obsidian/plugins/daymark/`. Reload Obsidian, then enable Daymark.
 
+Public descriptions live in `public-copy.json`. After editing it, run `npm run copy:sync` to update local surfaces and `npm run copy:show` to print the GitHub and Community Directory text. Production builds fail if the local copy has drifted.
+
 ## Privacy and safety
 
 - Daymark works locally through Obsidian's vault APIs.

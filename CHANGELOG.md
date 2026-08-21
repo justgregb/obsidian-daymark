@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Added one canonical source for Daymark's README, manifest, GitHub, and Community Directory copy, with sync, display, and release-time drift checks.
+
 ## 0.2.5 — 2026-08-21
 
 - Refreshed Daymark's public documentation with a clearer overview of Calendar, Quick Log, and Tally, an updated main screenshot, and simpler support copy. No runtime behavior changed.
