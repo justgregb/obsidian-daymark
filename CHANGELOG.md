@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.2.6 — 2026-08-29
+
 - Added a local-only **Copy diagnostics** command and repeatable 100/1,000/5,000-note performance benchmarks, exposing index and recent Sync timings without note paths or contents.
 - Prioritized the active note and visible calendar period during Sync bursts, and discarded superseded per-path work when a newer event was already waiting.
 - Added one canonical source for Daymark's README, manifest, GitHub, and Community Directory copy, with sync, display, and release-time drift checks.
