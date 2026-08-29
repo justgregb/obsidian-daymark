@@ -8,4 +8,4 @@ When the user explicitly selects Save in Tally, Daymark creates or updates one s
 
 Calculated records and totals remain in memory and are discarded when the plugin unloads. Only settings—including the journal folder, optional additional word-count folder, filename date format, optional template path, and calendar preferences—are persisted through Obsidian's plugin data API.
 
-When the user explicitly runs **Daymark: Copy diagnostics**, Daymark copies local index counts and recent processing timings to the system clipboard. The report contains no note names, paths, or contents and is not transmitted anywhere by Daymark.
+When the user explicitly runs **Daymark: Show diagnostics**, Daymark opens a read-only local report containing index counts and recent processing timings. The report contains no note names, paths, or contents, is not transmitted anywhere by Daymark, and is not written outside Obsidian.

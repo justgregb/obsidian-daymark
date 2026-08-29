@@ -19,3 +19,9 @@ if (runtimeBytes > MAX_RUNTIME_BYTES) {
 }
 
 JSON.parse(await readFile("manifest.json", "utf8"));
+
+const bundle = await readFile("main.js", "utf8");
+const forbiddenBrowserCapability = ["clip", "board"].join("");
+if (bundle.toLowerCase().includes(forbiddenBrowserCapability)) {
+  throw new Error("Release bundle must not access the system copy buffer.");
+}

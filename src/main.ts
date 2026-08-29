@@ -15,6 +15,7 @@ import {
   monotonicNow,
   type SyncBatchDiagnostics
 } from "./diagnostics";
+import { DiagnosticsModal } from "./diagnostics-modal";
 import { promptForDate } from "./go-to-date-modal";
 import { DaymarkIndex } from "./indexer";
 import { isValidObsidianDateFormat } from "./obsidian-date";
@@ -162,11 +163,9 @@ export default class DaymarkPlugin extends Plugin {
       }
     });
     this.addCommand({
-      id: "copy-diagnostics",
-      name: "Copy diagnostics",
-      callback: () => {
-        void this.copyDiagnostics();
-      }
+      id: "show-diagnostics",
+      name: "Show diagnostics",
+      callback: () => this.showDiagnostics()
     });
     this.addCommand({
       id: "save-current-period",
@@ -591,7 +590,7 @@ export default class DaymarkPlugin extends Plugin {
     if (this.recentSyncBatches.length > MAX_RECENT_SYNC_BATCHES) this.recentSyncBatches.shift();
   }
 
-  private async copyDiagnostics(): Promise<void> {
+  private showDiagnostics(): void {
     const report = createDiagnosticsReport({
       version: this.manifest.version,
       platform: Platform.isMobile ? "mobile" : "desktop",
@@ -602,13 +601,7 @@ export default class DaymarkPlugin extends Plugin {
       coalescedOperationCount: this.coalescedOperationCount,
       recentSyncBatches: this.recentSyncBatches
     });
-    try {
-      await navigator.clipboard.writeText(report);
-      new Notice("Daymark diagnostics copied.");
-    } catch (error) {
-      console.error("Daymark could not copy its local diagnostics.", error);
-      new Notice("Daymark could not copy diagnostics to the clipboard.");
-    }
+    new DiagnosticsModal(this.app, report).open();
   }
 
   private scheduleRebuild(): void {

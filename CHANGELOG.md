@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.2.7 — 2026-08-29
+
+- Replaced automatic diagnostics copying with a read-only local diagnostics window, removing system copy-buffer access while preserving privacy-safe performance troubleshooting.
+
 ## 0.2.6 — 2026-08-29
 
 - Added a local-only **Copy diagnostics** command and repeatable 100/1,000/5,000-note performance benchmarks, exposing index and recent Sync timings without note paths or contents.
