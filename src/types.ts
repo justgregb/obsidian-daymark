@@ -15,11 +15,9 @@ export interface PeriodBounds {
   end: PlainDate;
 }
 
-export interface TaggedTaskSource {
+export interface TaggedValue {
   tag: string;
   value: number;
-  text: string;
-  line: number;
 }
 
 export interface DailyRecord {
@@ -31,7 +29,7 @@ export interface DailyRecord {
   photos: number;
   totalCheckboxes: number;
   completedCheckboxes: number;
-  taggedTasks: TaggedTaskSource[];
+  taggedValues: TaggedValue[];
 }
 
 export interface DailyMetricSource {
@@ -41,7 +39,7 @@ export interface DailyMetricSource {
   value: number;
 }
 
-export interface AggregateTaskSource extends TaggedTaskSource {
+export interface AggregateTagSource extends TaggedValue {
   date: PlainDate;
   isoDate: string;
   path: string;
@@ -50,7 +48,7 @@ export interface AggregateTaskSource extends TaggedTaskSource {
 export interface TagAggregate {
   tag: string;
   total: number;
-  sources: AggregateTaskSource[];
+  sources: AggregateTagSource[];
 }
 
 export interface PeriodAggregate {

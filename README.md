@@ -77,6 +77,12 @@ You can choose your daily-note folder, template, date format, first weekday, rec
 
 Daymark counts journal prose while ignoring frontmatter, code, URLs, images, Markdown list lines, and formatting characters.
 
+## Diagnostics
+
+If Daymark feels slow during a large Sync, run **Daymark: Copy diagnostics** from the command palette. It copies local index counts and recent processing timings without including note names, paths, or contents.
+
+Contributors can run `npm run benchmark` to measure parsing and incremental aggregation with 100, 1,000, and 5,000 synthetic daily notes.
+
 ## Installation
 
 ### Install a release manually

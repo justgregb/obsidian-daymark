@@ -53,6 +53,9 @@ describe("daily-note index", () => {
     expect(aggregate.photos).toBe(2);
     expect(reads).toEqual([firstPath, secondPath]);
     expect(index.isReady).toBe(true);
+    expect(index.diagnostics.recordCount).toBe(2);
+    expect(index.diagnostics.lastRebuildFileCount).toBe(2);
+    expect(index.diagnostics.lastRebuildDurationMs).toBeGreaterThanOrEqual(0);
   });
 
   it("tracks known completed-item tags through incremental changes", async () => {
@@ -102,5 +105,51 @@ describe("daily-note index", () => {
     contents.set(moved, "- [x] 3 #language-lessons");
     await index.refresh(moved);
     expect(index.knownTags()).toEqual(["language-lessons"]);
+  });
+
+  it("reruns a rebuild requested while an earlier rebuild is reading", async () => {
+    const file = fakeFile("Journal/2026-08-10.md");
+    const journal = fakeFolder("Journal", [file]);
+    let reads = 0;
+    let releaseFirstRead!: () => void;
+    const firstRead = new Promise<void>((resolve) => {
+      releaseFirstRead = resolve;
+    });
+    const app = {
+      vault: {
+        getFolderByPath: (path: string) => path === "Journal" ? journal : null,
+        getRoot: () => fakeFolder(""),
+        cachedRead: async () => {
+          reads += 1;
+          if (reads === 1) await firstRead;
+          return reads === 1 ? "One" : "One two";
+        }
+      }
+    } as unknown as ConstructorParameters<typeof DaymarkIndex>[0];
+    const settings: DaymarkSettings = {
+      settingsVersion: 3,
+      journalFolder: "Journal",
+      dateFormat: "YYYY-MM-DD",
+      templatePath: "",
+      additionalWordFolder: "",
+      weekStart: "monday",
+      highlightedWeekdays: [],
+      showCoverPhotos: true,
+      showCalendarTotals: true,
+      tallyEnabled: true,
+      tallyMetricLabels: {},
+      tallyTagLabels: {}
+    };
+    const index = new DaymarkIndex(app, () => settings, () => "en-US");
+
+    const first = index.rebuild();
+    await Promise.resolve();
+    const requested = index.rebuild();
+    releaseFirstRead();
+    await Promise.all([first, requested]);
+
+    const aggregate = index.aggregate(getPeriodBounds({ year: 2026, month: 8, day: 10 }, "month", 1));
+    expect(reads).toBe(2);
+    expect(aggregate.words).toBe(2);
   });
 });

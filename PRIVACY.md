@@ -7,3 +7,5 @@ The plugin reads dated Markdown files under the configured journal folder. When 
 When the user explicitly selects Save in Tally, Daymark creates or updates one structured `Tally — <period>.md` report in the narrowest common folder containing that period's daily notes. It refuses to overwrite a same-named file that it does not recognize as generated output. Open only reopens the matching generated report and does not change it.
 
 Calculated records and totals remain in memory and are discarded when the plugin unloads. Only settings—including the journal folder, optional additional word-count folder, filename date format, optional template path, and calendar preferences—are persisted through Obsidian's plugin data API.
+
+When the user explicitly runs **Daymark: Copy diagnostics**, Daymark copies local index counts and recent processing timings to the system clipboard. The report contains no note names, paths, or contents and is not transmitted anywhere by Daymark.

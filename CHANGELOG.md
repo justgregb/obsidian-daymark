@@ -2,7 +2,12 @@
 
 ## Unreleased
 
+- Added a local-only **Copy diagnostics** command and repeatable 100/1,000/5,000-note performance benchmarks, exposing index and recent Sync timings without note paths or contents.
+- Prioritized the active note and visible calendar period during Sync bursts, and discarded superseded per-path work when a newer event was already waiting.
 - Added one canonical source for Daymark's README, manifest, GitHub, and Community Directory copy, with sync, display, and release-time drift checks.
+- Batched Obsidian Sync bursts into one bounded index refresh, coalesced metadata updates without rereading Markdown, yielded between background files, and emitted one date-scoped view change.
+- Made same-period selection update only active-date state, refreshed Year activity in place, limited Month/Week updates to changed cells, and preserved matching cover-image nodes while those cells update.
+- Deferred the optional additional-folder index until expanded Tally needs it, bounded full-index reads, chose the cheaper sparse or date-bounded period aggregation path, debounced layout persistence, cached cover resolution, reduced parser allocations, and kept only the per-day tag totals used by reports.
 
 ## 0.2.5 — 2026-08-21
 

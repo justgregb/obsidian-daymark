@@ -1,16 +1,23 @@
 import type { App, TFile } from "obsidian";
+import { forEachConcurrent } from "./async-pool";
 import { toIsoDate } from "./date";
 import { dateFromDailyNotePath } from "./discovery";
+import { monotonicNow, type IndexDiagnostics } from "./diagnostics";
 import { parseObsidianDateFormat } from "./obsidian-date";
 import { parseDailyNote } from "./parser";
 import { DaymarkStore } from "./store";
 import type { DailyRecord, DaymarkSettings, PeriodAggregate, PeriodBounds, PlainDate } from "./types";
 import { markdownFilesInFolder } from "./vault-files";
 
+const INDEX_READ_CONCURRENCY = 8;
+
 export class DaymarkIndex {
   private readonly store = new DaymarkStore();
   private ready = false;
   private rebuilding: Promise<void> | null = null;
+  private rebuildRequested = false;
+  private lastRebuildFileCount: number | null = null;
+  private lastRebuildDurationMs: number | null = null;
 
   constructor(
     private readonly app: App,
@@ -30,17 +37,31 @@ export class DaymarkIndex {
     return this.ready;
   }
 
+  get diagnostics(): IndexDiagnostics {
+    return {
+      recordCount: this.store.size,
+      lastRebuildFileCount: this.lastRebuildFileCount,
+      lastRebuildDurationMs: this.lastRebuildDurationMs
+    };
+  }
+
   knownTags(): readonly string[] {
     return this.store.knownTags();
   }
 
   async ensureReady(): Promise<void> {
-    if (!this.ready) await this.rebuild();
+    while (!this.ready) {
+      if (this.rebuilding) await this.rebuilding;
+      else await this.rebuild();
+    }
   }
 
   async rebuild(): Promise<void> {
-    if (this.rebuilding) return this.rebuilding;
-    this.rebuilding = this.performRebuild();
+    if (this.rebuilding) {
+      this.rebuildRequested = true;
+      return this.rebuilding;
+    }
+    this.rebuilding = this.runRebuilds();
     try {
       await this.rebuilding;
     } finally {
@@ -66,28 +87,50 @@ export class DaymarkIndex {
     return this.dateForFile(file) !== null;
   }
 
+  dateForPath(path: string): PlainDate | null {
+    return this.dateForPathWithSettings(path, this.getSettings());
+  }
+
+  private async runRebuilds(): Promise<void> {
+    do {
+      this.rebuildRequested = false;
+      await this.performRebuild();
+    } while (this.rebuildRequested);
+  }
+
   private async performRebuild(): Promise<void> {
+    const startedAt = monotonicNow();
+    const settings = this.getSettings();
+    const locale = this.getLocale();
     const candidates: Array<{ file: TFile; date: PlainDate }> = [];
-    for (const file of markdownFilesInFolder(this.app.vault, this.getSettings().journalFolder)) {
-      const date = this.dateForFile(file);
+    for (const file of markdownFilesInFolder(this.app.vault, settings.journalFolder)) {
+      const date = this.dateForPathWithSettings(file.path, settings);
       if (date) candidates.push({ file, date });
     }
-    const parsed = await Promise.all(candidates.map(({ file, date }) => this.parseFile(file, date)));
+    const parsed = new Array<DailyRecord>(candidates.length);
+    await forEachConcurrent(candidates, INDEX_READ_CONCURRENCY, async ({ file, date }, index) => {
+      parsed[index] = await this.parseFile(file, date, locale);
+    }, true);
     this.store.replace(parsed);
     this.ready = true;
+    this.lastRebuildFileCount = candidates.length;
+    this.lastRebuildDurationMs = monotonicNow() - startedAt;
   }
 
   dateForFile(file: TFile): PlainDate | null {
-    const settings = this.getSettings();
-    return dateFromDailyNotePath(file.path, settings.journalFolder, settings.dateFormat, parseObsidianDateFormat);
+    return this.dateForPath(file.path);
   }
 
-  private async parseFile(file: TFile, knownDate: PlainDate): Promise<DailyRecord>;
+  private dateForPathWithSettings(path: string, settings: DaymarkSettings): PlainDate | null {
+    return dateFromDailyNotePath(path, settings.journalFolder, settings.dateFormat, parseObsidianDateFormat);
+  }
+
+  private async parseFile(file: TFile, knownDate: PlainDate, locale?: string): Promise<DailyRecord>;
   private async parseFile(file: TFile): Promise<DailyRecord | null>;
-  private async parseFile(file: TFile, knownDate?: PlainDate): Promise<DailyRecord | null> {
+  private async parseFile(file: TFile, knownDate?: PlainDate, locale = this.getLocale()): Promise<DailyRecord | null> {
     const date = knownDate ?? this.dateForFile(file);
     if (!date) return null;
     const content = await this.app.vault.cachedRead(file);
-    return parseDailyNote(file.path, file.basename, date, content, this.getLocale());
+    return parseDailyNote(file.path, file.basename, date, content, locale);
   }
 }

@@ -14,8 +14,14 @@ import {
   selectCalendarDate,
   type CalendarViewportState
 } from "./calendar-state";
+import {
+  changeAffectsBounds,
+  DaymarkChangeAccumulator,
+  type DaymarkChangeSet
+} from "./change-set";
 import { isSupportedCoverPath } from "./cover";
 import {
+  dateIsWithin,
   datesEqual,
   getPeriodBounds,
   formatPeriodTitle,
@@ -26,6 +32,7 @@ import {
 } from "./date";
 import { InlineTally } from "./inline-tally";
 import { dateTimeFormatter, numberFormatter } from "./intl-cache";
+import { syncDatePriority } from "./sync-scheduler";
 import type DaymarkPlugin from "./main";
 import type { DailyRecord, PeriodAggregate, PeriodMode, PlainDate, Weekday } from "./types";
 
@@ -72,13 +79,17 @@ export class DaymarkCalendarView extends ItemView {
   private renderTodayIso = "";
   private highlightedWeekdayMask = 0;
   private renderFrame: number | null = null;
+  private layoutSaveTimer: number | null = null;
   private renderVersion = 0;
+  private bodyEl: HTMLElement | null = null;
   private footerEl: HTMLElement | null = null;
+  private readonly pendingChanges = new DaymarkChangeAccumulator();
+  private readonly coverCache = new Map<string, { metadata: unknown; cover: TFile | null }>();
   private readonly inlineTally: InlineTally;
 
   constructor(leaf: WorkspaceLeaf, private readonly plugin: DaymarkPlugin) {
     super(leaf);
-    this.inlineTally = new InlineTally(plugin, () => this.render());
+    this.inlineTally = new InlineTally(plugin, () => this.renderFooterOnly());
   }
 
   getViewType(): string {
@@ -127,15 +138,11 @@ export class DaymarkCalendarView extends ItemView {
   override async onOpen(): Promise<void> {
     this.containerEl.addClass("daymark-calendar-container");
     this.opened = true;
-    this.unsubscribe = this.plugin.subscribe(() => this.scheduleRender());
+    this.unsubscribe = this.plugin.subscribe((change) => this.schedulePluginChange(change));
     this.registerEvent(this.app.workspace.on("file-open", (file) => this.syncToFile(file)));
-    this.registerEvent(this.app.metadataCache.on("changed", (file) => {
-      const record = this.plugin.index.recordForDate(this.selectedDate);
-      if (record?.path === file.path) this.scheduleRender();
-    }));
     this.renderLoading();
     try {
-      await this.plugin.ensureTallyReady();
+      await this.plugin.ensureCalendarReady();
       this.syncToFile(this.app.workspace.getActiveFile(), false);
       this.render();
     } catch (error) {
@@ -146,12 +153,18 @@ export class DaymarkCalendarView extends ItemView {
   override async onClose(): Promise<void> {
     this.opened = false;
     this.cancelScheduledRender();
+    this.flushViewState();
     this.containerEl.removeClass("daymark-calendar-container");
     this.unsubscribe?.();
     this.unsubscribe = null;
+    this.pendingChanges.take();
+    this.coverCache.clear();
+    this.bodyEl = null;
+    this.footerEl = null;
   }
 
   private renderLoading(): void {
+    this.bodyEl = null;
     this.footerEl = null;
     this.contentEl.empty();
     this.contentEl.addClass("daymark-calendar-view");
@@ -160,6 +173,7 @@ export class DaymarkCalendarView extends ItemView {
   }
 
   private renderError(error: unknown): void {
+    this.bodyEl = null;
     this.footerEl = null;
     this.contentEl.empty();
     this.contentEl.addClass("daymark-calendar-view");
@@ -173,6 +187,7 @@ export class DaymarkCalendarView extends ItemView {
   private render(): void {
     if (!this.opened) return;
     this.cancelScheduledRender();
+    this.pendingChanges.take();
     const renderVersion = ++this.renderVersion;
     this.prepareRenderContext();
     const weekStart = this.plugin.resolveWeekStart();
@@ -192,6 +207,7 @@ export class DaymarkCalendarView extends ItemView {
 
     this.createHeader(root, bounds);
     const body = root.createDiv("daymark-calendar-body");
+    this.bodyEl = body;
     if (this.mode === "year") this.createYearView(body, weekStart, aggregate);
     else if (this.mode === "month") this.createMonthView(body, weekStart);
     else this.createWeekView(body, weekStart);
@@ -222,12 +238,7 @@ export class DaymarkCalendarView extends ItemView {
     setIcon(todayIcon, "calendar-clock");
     today.createSpan({ cls: "daymark-calendar-today-label", text: "Today" });
     today.addEventListener("click", () => {
-      const current = todayPlainDate();
-      this.displayedMonth = firstOfMonth(current);
-      this.displayedWeek = current;
-      this.selectedDate = current;
-      this.saveViewState();
-      this.render();
+      this.showDate(todayPlainDate());
     });
     this.createNavigationButton(controls, "chevron-right", `Next ${this.mode}`, 1);
   }
@@ -406,13 +417,7 @@ export class DaymarkCalendarView extends ItemView {
     }
     button.createSpan({ cls: "daymark-calendar-day-number", text: String(date.day) });
     button.addEventListener("click", () => {
-      const state = selectCalendarDate(date);
-      this.selectedDate = state.selectedDate;
-      this.displayedMonth = state.displayedMonth;
-      this.displayedWeek = state.displayedWeek;
-      this.saveViewState();
-      this.render();
-      void this.plugin.openOrCreateDailyNote(date);
+      this.selectDate(date, true);
     });
   }
 
@@ -477,13 +482,7 @@ export class DaymarkCalendarView extends ItemView {
     }
 
     row.addEventListener("click", () => {
-      const state = selectCalendarDate(date);
-      this.selectedDate = state.selectedDate;
-      this.displayedMonth = state.displayedMonth;
-      this.displayedWeek = state.displayedWeek;
-      this.saveViewState();
-      this.render();
-      void this.plugin.openOrCreateDailyNote(date);
+      this.selectDate(date, true);
     });
   }
 
@@ -499,12 +498,29 @@ export class DaymarkCalendarView extends ItemView {
   private firstCoverFile(record: DailyRecord): TFile | null {
     const note = this.app.vault.getAbstractFileByPath(record.path);
     if (!(note instanceof TFile)) return null;
-    const embeds = this.app.metadataCache.getFileCache(note)?.embeds ?? [];
+    const metadata = this.app.metadataCache.getFileCache(note);
+    const cached = this.coverCache.get(record.path);
+    if (cached?.metadata === metadata) {
+      this.coverCache.delete(record.path);
+      this.coverCache.set(record.path, cached);
+      return cached.cover;
+    }
+    const embeds = metadata?.embeds ?? [];
+    let cover: TFile | null = null;
     for (const embed of embeds) {
       const file = this.app.metadataCache.getFirstLinkpathDest(embed.link, note.path);
-      if (file && isSupportedCoverPath(file.path)) return file;
+      if (file && isSupportedCoverPath(file.path)) {
+        cover = file;
+        break;
+      }
     }
-    return null;
+    this.coverCache.set(record.path, { metadata, cover });
+    while (this.coverCache.size > 256) {
+      const oldest = this.coverCache.keys().next().value;
+      if (oldest === undefined) break;
+      this.coverCache.delete(oldest);
+    }
+    return cover;
   }
 
   private createFooter(parent: HTMLElement, aggregate: PeriodAggregate, renderVersion: number): void {
@@ -548,6 +564,7 @@ export class DaymarkCalendarView extends ItemView {
     const panel = footer.createDiv("daymark-tally-panel");
     panel.id = `${this.accessibleId}-tally-panel`;
     this.inlineTally.createMetrics(panel, aggregate);
+    void this.plugin.ensureAdditionalWordsReady();
   }
 
   private createTallyToggle(parent: HTMLElement, expanded: boolean): void {
@@ -584,6 +601,111 @@ export class DaymarkCalendarView extends ItemView {
 
   private formatNumber(value: number): string {
     return this.numberFormatter.format(value);
+  }
+
+  private renderBodyOnly(): void {
+    if (!this.opened || !this.bodyEl) return;
+    this.prepareRenderContext();
+    const weekStart = this.plugin.resolveWeekStart();
+    const bounds = this.currentBounds(weekStart);
+    const aggregate = this.plugin.index.aggregate(bounds);
+    const body = createDiv();
+    body.className = "daymark-calendar-body";
+    if (this.mode === "year") this.createYearView(body, weekStart, aggregate);
+    else if (this.mode === "month") this.createMonthView(body, weekStart);
+    else this.createWeekView(body, weekStart);
+    this.bodyEl.replaceWith(body);
+    this.bodyEl = body;
+  }
+
+  private refreshYearView(): void {
+    if (!this.opened || !this.bodyEl || this.mode !== "year") return;
+    this.prepareRenderContext();
+    const aggregate = this.plugin.index.aggregate(this.currentBounds());
+    const activityIndex = calendarYearActivityIndex(aggregate.noteSources, aggregate.wordSources);
+    const monthButtons = this.bodyEl.querySelectorAll<HTMLElement>(".daymark-year-month[data-month]");
+    if (monthButtons.length !== 12) {
+      this.renderBodyOnly();
+      return;
+    }
+
+    monthButtons.forEach((button) => {
+      const first = button.dataset.month ? parseIsoDate(button.dataset.month) : null;
+      if (!first) return;
+      const monthIndex = first.month - 1;
+      const noteCount = activityIndex.monthNoteCounts[monthIndex] ?? 0;
+      const wordCount = activityIndex.monthWordCounts[monthIndex] ?? 0;
+      const monthLabel = this.monthFormatter.format(toDate(first));
+      const selectedMonth = this.selectedDate.year === first.year && this.selectedDate.month === first.month;
+      const selectedDateDescription = selectedMonth
+        ? ` Selected date ${this.fullDateFormatter.format(toDate(this.selectedDate))}.`
+        : "";
+      button.toggleClass("is-selected-month", selectedMonth);
+      button.setAttr(
+        "aria-label",
+        `${monthLabel} ${first.year}, ${noteCount} ${noteCount === 1 ? "daily note" : "daily notes"}, ${wordCount} ${wordCount === 1 ? "word" : "words"}.${selectedDateDescription} Show month view.`
+      );
+      const title = button.querySelector(".daymark-year-month-title");
+      const selectedDay = title?.querySelector(".daymark-year-selected-day");
+      if (selectedMonth) {
+        if (selectedDay) selectedDay.setText(String(this.selectedDate.day));
+        else title?.createSpan({ cls: "daymark-year-selected-day", text: String(this.selectedDate.day) });
+      } else {
+        selectedDay?.remove();
+      }
+    });
+
+    const yearMarks = this.bodyEl.querySelectorAll<HTMLElement>(".daymark-year-mark[data-date]");
+    yearMarks.forEach((mark) => {
+      const isoDate = mark.dataset.date;
+      if (!isoDate) return;
+      const words = activityIndex.wordsByDate.get(isoDate) ?? 0;
+      const intensity = yearWritingIntensity(words, activityIndex.busiestDayWords);
+      mark.toggleClass("has-note", activityIndex.noteDates.has(isoDate));
+      mark.removeClass("has-writing-low", "has-writing-medium", "has-writing-high");
+      if (intensity) mark.addClass(`has-writing-${intensity}`);
+      mark.toggleClass("is-today", isoDate === this.renderTodayIso);
+      mark.toggleClass("is-selected", isoDate === this.renderSelectedIso);
+    });
+  }
+
+  private patchVisibleDates(dates: readonly string[], bounds: ReturnType<typeof getPeriodBounds>): void {
+    if (!this.bodyEl) return;
+    let missedDateInPeriod = false;
+    const start = toIsoDate(bounds.start);
+    const end = toIsoDate(bounds.end);
+    for (const isoDate of dates) {
+      const date = parseIsoDate(isoDate);
+      if (!date) continue;
+      const current = this.bodyEl.querySelector<HTMLElement>(`[data-date="${isoDate}"]`);
+      if (!current) {
+        if (isoDate >= start && isoDate < end) missedDateInPeriod = true;
+        continue;
+      }
+      const holder = createDiv();
+      const record = this.plugin.index.recordForDate(date);
+      if (this.mode === "month") this.createDay(holder, date, record, this.displayedMonth);
+      else this.createWeekRow(holder, date, record);
+      const replacement = holder.firstElementChild;
+      if (replacement) {
+        this.preserveMatchingCover(current, replacement);
+        current.replaceWith(replacement);
+      }
+    }
+    if (missedDateInPeriod) this.renderBodyOnly();
+  }
+
+  private currentBounds(weekStart = this.plugin.resolveWeekStart()): ReturnType<typeof getPeriodBounds> {
+    const anchor = this.mode === "week" ? this.displayedWeek : this.displayedMonth;
+    return getPeriodBounds(anchor, this.mode, weekStart);
+  }
+
+  private preserveMatchingCover(current: HTMLElement, replacement: Element): void {
+    const currentCover = current.querySelector("img");
+    const replacementCover = replacement.querySelector("img");
+    if (currentCover && replacementCover && currentCover.src === replacementCover.src) {
+      replacementCover.replaceWith(currentCover);
+    }
   }
 
   private prepareRenderContext(): void {
@@ -634,10 +756,11 @@ export class DaymarkCalendarView extends ItemView {
   }
 
   showDate(date: PlainDate): void {
-    const state = selectCalendarDate(date);
-    this.applyViewportState(state);
-    this.saveViewState();
-    this.render();
+    this.selectDate(date, false);
+  }
+
+  syncPriorityForDates(dates: Iterable<string>): 0 | 1 | 2 {
+    return syncDatePriority(dates, toIsoDate(this.selectedDate), this.currentBounds());
   }
 
   showPeriod(mode: PeriodMode, anchor: PlainDate): void {
@@ -662,7 +785,7 @@ export class DaymarkCalendarView extends ItemView {
     this.displayedWeek = today;
     this.tallyExpanded = true;
     this.saveViewState();
-    await this.plugin.ensureTallyReady();
+    await this.plugin.ensureCalendarReady();
     const anchor = this.mode === "week" ? this.displayedWeek : this.displayedMonth;
     const bounds = getPeriodBounds(anchor, this.mode, this.plugin.resolveWeekStart());
     const aggregate = this.plugin.index.aggregate(bounds);
@@ -678,19 +801,84 @@ export class DaymarkCalendarView extends ItemView {
     if (datesEqual(this.selectedDate, date)
       && datesEqual(this.displayedMonth, displayedMonth)
       && datesEqual(this.displayedWeek, date)) return;
-    this.selectedDate = date;
-    this.displayedMonth = displayedMonth;
-    this.displayedWeek = date;
+    const previousIso = toIsoDate(this.selectedDate);
+    const staysInPeriod = this.dateStaysInVisiblePeriod(date);
+    this.applyViewportState(selectCalendarDate(date));
     this.saveViewState();
-    if (shouldRender) this.render();
+    if (!shouldRender) return;
+    if (!staysInPeriod) this.render();
+    else if (this.mode === "year") this.refreshYearView();
+    else this.updateVisibleSelection(previousIso, toIsoDate(date));
   }
 
-  private scheduleRender(): void {
-    if (!this.opened || this.renderFrame !== null) return;
+  private selectDate(date: PlainDate, openNote: boolean): void {
+    const previousIso = toIsoDate(this.selectedDate);
+    const staysInPeriod = this.dateStaysInVisiblePeriod(date);
+    this.applyViewportState(selectCalendarDate(date));
+    this.saveViewState();
+    if (!staysInPeriod) this.render();
+    else if (this.mode === "year") this.refreshYearView();
+    else this.updateVisibleSelection(previousIso, toIsoDate(date));
+    if (openNote) void this.plugin.openOrCreateDailyNote(date);
+  }
+
+  private dateStaysInVisiblePeriod(date: PlainDate): boolean {
+    if (this.mode === "month") return this.dateIsInDisplayedMonth(date);
+    if (this.mode === "year") return date.year === this.displayedMonth.year;
+    return dateIsWithin(date, this.currentBounds());
+  }
+
+  private updateVisibleSelection(previousIso: string, selectedIso: string): void {
+    if (!this.bodyEl) return;
+    this.renderSelectedIso = selectedIso;
+    const previous = this.bodyEl.querySelector<HTMLElement>(`[data-date="${previousIso}"]`);
+    const selected = this.bodyEl.querySelector<HTMLElement>(`[data-date="${selectedIso}"]`);
+    previous?.removeClass("is-selected");
+    selected?.addClass("is-selected");
+    if (this.mode === "month") {
+      previous?.setAttr("aria-selected", "false");
+      selected?.setAttr("aria-selected", "true");
+    } else {
+      previous?.setAttr("aria-pressed", "false");
+      selected?.setAttr("aria-pressed", "true");
+    }
+  }
+
+  private schedulePluginChange(change: DaymarkChangeSet): void {
+    if (!this.opened) return;
+    this.pendingChanges.add(change);
+    if (this.renderFrame !== null) return;
     this.renderFrame = window.requestAnimationFrame(() => {
       this.renderFrame = null;
-      this.render();
+      const pending = this.pendingChanges.take();
+      if (pending) this.applyPluginChange(pending);
     });
+  }
+
+  private applyPluginChange(change: DaymarkChangeSet): void {
+    for (const path of change.dailyPaths) this.coverCache.delete(path);
+    if (change.full) {
+      this.render();
+      return;
+    }
+
+    const bounds = this.currentBounds();
+    const affectsPeriod = changeAffectsBounds(change, bounds);
+    const coverDates = this.plugin.settings.showCoverPhotos ? change.coverDates : [];
+    const visibleDates = coverDates.length === 0
+      ? change.dailyDates
+      : [...new Set([...change.dailyDates, ...coverDates])];
+    if (change.dailyDates.length > 0 || (this.mode !== "year" && visibleDates.length > 0)) {
+      this.prepareRenderContext();
+      if (this.mode === "year") {
+        if (affectsPeriod) this.refreshYearView();
+      } else {
+        this.patchVisibleDates(visibleDates, bounds);
+      }
+    }
+    if (affectsPeriod
+      || (change.additionalWords && this.tallyExpanded)
+      || (change.reportPaths.length > 0 && this.tallyExpanded)) this.renderFooterOnly();
   }
 
   private cancelScheduledRender(): void {
@@ -700,6 +888,14 @@ export class DaymarkCalendarView extends ItemView {
   }
 
   private saveViewState(): void {
+    if (this.layoutSaveTimer !== null) window.clearTimeout(this.layoutSaveTimer);
+    this.layoutSaveTimer = window.setTimeout(() => this.flushViewState(), 250);
+  }
+
+  private flushViewState(): void {
+    if (this.layoutSaveTimer === null) return;
+    window.clearTimeout(this.layoutSaveTimer);
+    this.layoutSaveTimer = null;
     void this.app.workspace.requestSaveLayout();
   }
 

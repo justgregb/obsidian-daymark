@@ -8,6 +8,7 @@ import {
   getPeriodBounds,
   isSupportedDateFormat,
   parseDateFromBasename,
+  parseIsoDate,
   shiftAnchor,
   toIsoDate
 } from "../src/date";
@@ -26,6 +27,12 @@ describe("daily-note dates", () => {
     expect(isSupportedDateFormat("YYYY-MM-DD")).toBe(true);
     expect(isSupportedDateFormat("YYYY-MM")).toBe(false);
     expect(isSupportedDateFormat("YYYY-MM-DD-YYYY")).toBe(false);
+  });
+
+  it("parses ISO state dates without accepting loose or invalid values", () => {
+    expect(parseIsoDate("2026-08-12")).toEqual({ year: 2026, month: 8, day: 12 });
+    expect(parseIsoDate("2026-8-12")).toBeNull();
+    expect(parseIsoDate("2026-02-29")).toBeNull();
   });
 });
 

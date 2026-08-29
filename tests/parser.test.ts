@@ -14,9 +14,7 @@ describe("task parsing", () => {
     expect(record.words).toBe(0);
     expect(record.totalCheckboxes).toBe(0);
     expect(record.completedCheckboxes).toBe(0);
-    expect(record.taggedTasks).toEqual([
-      { tag: "pushups", value: 160, text: "160 #pushups – (40x4), feeling strong", line: 3 }
-    ]);
+    expect(record.taggedValues).toEqual([{ tag: "pushups", value: 160 }]);
   });
 
   it("handles nested tasks, X status, decimals, multiple tags, and duplicate tags", () => {
@@ -34,10 +32,10 @@ describe("task parsing", () => {
     );
     expect(record.completedCheckboxes).toBe(1);
     expect(record.totalCheckboxes).toBe(2);
-    expect(record.taggedTasks).toEqual([
-      { tag: "running", value: 5.5, text: "5.5 #Running #cardio #running", line: 0 },
-      { tag: "cardio", value: 5.5, text: "5.5 #Running #cardio #running", line: 0 },
-      { tag: "greek", value: 1, text: "Greek #greek", line: 1 }
+    expect(record.taggedValues).toEqual([
+      { tag: "running", value: 5.5 },
+      { tag: "cardio", value: 5.5 },
+      { tag: "greek", value: 1 }
     ]);
   });
 
@@ -52,10 +50,9 @@ describe("task parsing", () => {
         "- [X] Ran (5.5) #running"
       ].join("\n")
     );
-    expect(record.taggedTasks).toEqual([
-      { tag: "test", value: 30, text: "Test 30 #test", line: 0 },
-      { tag: "test", value: 30, text: "30 Test #test", line: 1 },
-      { tag: "running", value: 5.5, text: "Ran (5.5) #running", line: 2 }
+    expect(record.taggedValues).toEqual([
+      { tag: "test", value: 60 },
+      { tag: "running", value: 5.5 }
     ]);
   });
 
@@ -73,9 +70,7 @@ describe("task parsing", () => {
     );
     expect(record.completedCheckboxes).toBe(1);
     expect(record.totalCheckboxes).toBe(1);
-    expect(record.taggedTasks).toEqual([
-      { tag: "meditation", value: 0, text: "0 #meditation", line: 3 }
-    ]);
+    expect(record.taggedValues).toEqual([{ tag: "meditation", value: 0 }]);
   });
 
   it("ignores tasks inside fenced code", () => {
@@ -87,7 +82,7 @@ describe("task parsing", () => {
     );
     expect(record.completedCheckboxes).toBe(0);
     expect(record.totalCheckboxes).toBe(0);
-    expect(record.taggedTasks).toEqual([]);
+    expect(record.taggedValues).toEqual([]);
   });
 });
 

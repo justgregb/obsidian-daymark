@@ -7,6 +7,7 @@ export default defineConfig({
     }
   },
   test: {
+    benchmark: { include: ["benchmarks/**/*.bench.ts"] },
     coverage: { enabled: false },
     environment: "node",
     include: ["tests/**/*.test.ts"]

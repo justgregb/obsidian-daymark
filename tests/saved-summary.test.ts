@@ -6,7 +6,7 @@ import {
   isGeneratedTallySummary
 } from "../src/saved-summary";
 import type {
-  AggregateTaskSource,
+  AggregateTagSource,
   DailyMetricSource,
   PeriodAggregate,
   PeriodMode,
@@ -23,12 +23,10 @@ function source(isoDate: string, value: number): DailyMetricSource {
   };
 }
 
-function taskSource(isoDate: string, tag: string, value: number): AggregateTaskSource {
+function taskSource(isoDate: string, tag: string, value: number): AggregateTagSource {
   return {
     ...source(isoDate, value),
-    tag,
-    text: `${value} #${tag}`,
-    line: 3
+    tag
   };
 }
 

@@ -1,7 +1,7 @@
 import { toIsoDate } from "./date";
 import { isSupportedImagePath } from "./cover";
 import { wordSegmenter } from "./intl-cache";
-import type { DailyRecord, PlainDate, TaggedTaskSource } from "./types";
+import type { DailyRecord, PlainDate } from "./types";
 
 const TASK_PATTERN = /^\s*[-+*]\s+\[([xX ])\]\s+(.*)$/u;
 const LIST_PATTERN = /^\s*(?:[-+*]|\d+[.)])\s+/u;
@@ -10,14 +10,8 @@ const TAG_PATTERN = /(?:^|\s)#([\p{L}\p{N}_/-]+)/gu;
 
 interface ParsedTask {
   completed: boolean;
-  text: string;
   value: number | null;
   tags: string[];
-}
-
-interface MarkdownContentLine {
-  text: string;
-  line: number;
 }
 
 function frontmatterEnd(lines: string[]): number {
@@ -33,10 +27,10 @@ function stripInlineCode(value: string): string {
   return value.replace(/(`+)([\s\S]*?)\1/gu, " ");
 }
 
-function markdownContentLines(content: string): MarkdownContentLine[] {
+function markdownContentLines(content: string): string[] {
   const lines = content.split(/\r?\n/u);
   const yamlEnd = frontmatterEnd(lines);
-  const contentLines: MarkdownContentLine[] = [];
+  const contentLines: string[] = [];
   let fence: { marker: string; length: number } | null = null;
 
   for (let index = 0; index < lines.length; index += 1) {
@@ -53,7 +47,7 @@ function markdownContentLines(content: string): MarkdownContentLine[] {
       }
       continue;
     }
-    if (!fence) contentLines.push({ text: line, line: index });
+    if (!fence) contentLines.push(line);
   }
 
   return contentLines;
@@ -78,7 +72,6 @@ function parseTask(line: string): ParsedTask | null {
     : null;
   return {
     completed,
-    text,
     value: value !== null && Number.isFinite(value) ? value : null,
     tags: [...tags]
   };
@@ -90,8 +83,8 @@ function localImageTarget(value: string): string | null {
   return target.length > 0 && isSupportedImagePath(target) ? target : null;
 }
 
-function countPhotosInContentLines(lines: readonly MarkdownContentLine[]): number {
-  const markdown = lines.map((line) => line.text).join("\n");
+function countPhotosInContentLines(lines: readonly string[]): number {
+  const markdown = lines.join("\n");
   const visible = stripInlineCode(markdown.replace(/<!--[\s\S]*?-->/gu, " "));
   let photos = 0;
   for (const match of visible.matchAll(/!\[\[([^\]]+)\]\]/gu)) {
@@ -145,8 +138,8 @@ export function countWords(value: string, locale?: string): number {
 
 export function countMarkdownProseWords(content: string, locale?: string): number {
   const proseLines: string[] = [];
-  for (const { text } of markdownContentLines(content)) {
-    if (!LIST_PATTERN.test(text)) proseLines.push(text);
+  for (const line of markdownContentLines(content)) {
+    if (!LIST_PATTERN.test(line)) proseLines.push(line);
   }
   return countWords(proseLines.join("\n"), locale);
 }
@@ -159,12 +152,12 @@ export function parseDailyNote(
   locale?: string
 ): DailyRecord {
   const proseLines: string[] = [];
-  const taggedTasks: TaggedTaskSource[] = [];
+  const tagTotals = new Map<string, number>();
   let totalCheckboxes = 0;
   let completedCheckboxes = 0;
   const contentLines = markdownContentLines(content);
 
-  for (const { text: line, line: index } of contentLines) {
+  for (const line of contentLines) {
 
     const task = parseTask(line);
     if (task) {
@@ -174,7 +167,7 @@ export function parseDailyNote(
       }
       if (task.completed && task.value !== null) {
         for (const tag of task.tags) {
-          taggedTasks.push({ tag, value: task.value, text: task.text, line: index });
+          tagTotals.set(tag, (tagTotals.get(tag) ?? 0) + task.value);
         }
       }
     }
@@ -192,6 +185,6 @@ export function parseDailyNote(
     photos: countPhotosInContentLines(contentLines),
     totalCheckboxes,
     completedCheckboxes,
-    taggedTasks
+    taggedValues: [...tagTotals].map(([tag, value]) => ({ tag, value }))
   };
 }

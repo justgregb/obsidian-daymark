@@ -27,7 +27,7 @@ export default tseslint.config(
     }
   },
   {
-    files: ["*.mjs", "scripts/**/*.mjs", "tests/**/*.ts", "vitest.config.ts"],
+    files: ["*.mjs", "scripts/**/*.mjs", "tests/**/*.ts", "benchmarks/**/*.ts", "vitest.config.ts"],
     rules: {
       "obsidianmd/no-nodejs-modules": "off"
     }

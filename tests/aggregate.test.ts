@@ -15,7 +15,7 @@ function record(isoDate: string, words: number, completed: number, value?: numbe
     photos,
     totalCheckboxes: completed,
     completedCheckboxes: completed,
-    taggedTasks: value === undefined ? [] : [{ tag: "pushups", value, text: `${value} #pushups`, line: 5 }]
+    taggedValues: value === undefined ? [] : [{ tag: "pushups", value }]
   };
 }
 
@@ -110,6 +110,21 @@ describe("incremental store behavior", () => {
     expect(store.getByIsoDate(changedDate.isoDate)).toBe(changedDate);
   });
 
+  it("preserves totals when nested paths resolve to the same daily date", () => {
+    const store = new DaymarkStore();
+    const first = record("2026-08-10", 10, 0);
+    const duplicate = {
+      ...record("2026-08-10", 20, 0),
+      path: "Journal/Alternate/2026-08-10.md"
+    };
+    const filler = Array.from({ length: 35 }, (_, index) => (
+      record(`2026-09-${String(index % 30 + 1).padStart(2, "0")}`, 1, 0)
+    )).map((value, index) => ({ ...value, path: `${value.path}.${index}` }));
+    store.replace([first, duplicate, ...filler]);
+
+    expect(store.aggregate(getPeriodBounds(first.date, "week", 1)).words).toBe(30);
+  });
+
   it("reuses period aggregates until the journal index changes", () => {
     const store = new DaymarkStore();
     const first = record("2026-08-10", 10, 0);
@@ -157,7 +172,7 @@ describe("incremental store behavior", () => {
 
     store.upsert({
       ...record("2026-08-11", 5, 0),
-      taggedTasks: [{ tag: "cycling", value: 4, text: "4 #cycling", line: 1 }]
+      taggedValues: [{ tag: "cycling", value: 4 }]
     });
     expect(store.knownTags()).toEqual(["cycling", "pushups"]);
   });

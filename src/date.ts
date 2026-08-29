@@ -2,6 +2,7 @@ import { dateTimeFormatter } from "./intl-cache";
 import type { PeriodBounds, PeriodMode, PlainDate, Weekday } from "./types";
 
 const DATE_TOKENS = ["YYYY", "MM", "DD"] as const;
+const ISO_DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/u;
 
 function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -71,7 +72,14 @@ export function toIsoDate(date: PlainDate): string {
 }
 
 export function parseIsoDate(value: string): PlainDate | null {
-  return parseDateFromBasename(value, "YYYY-MM-DD");
+  const match = ISO_DATE_PATTERN.exec(value);
+  if (!match) return null;
+  const date = {
+    year: Number(match[1]),
+    month: Number(match[2]),
+    day: Number(match[3])
+  };
+  return isValidDate(date) ? date : null;
 }
 
 export function todayPlainDate(now = new Date()): PlainDate {

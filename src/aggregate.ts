@@ -1,6 +1,6 @@
 import { dateIsWithin } from "./date";
 import type {
-  AggregateTaskSource,
+  AggregateTagSource,
   DailyMetricSource,
   DailyRecord,
   PeriodAggregate,
@@ -48,13 +48,13 @@ export function aggregateRecords(records: Iterable<DailyRecord>, bounds: PeriodB
       });
     }
 
-    for (const source of record.taggedTasks) {
+    for (const source of record.taggedValues) {
       let aggregate = tags.get(source.tag);
       if (!aggregate) {
         aggregate = { tag: source.tag, total: 0, sources: [] };
         tags.set(source.tag, aggregate);
       }
-      const enriched: AggregateTaskSource = {
+      const enriched: AggregateTagSource = {
         ...source,
         date: record.date,
         isoDate: record.isoDate,

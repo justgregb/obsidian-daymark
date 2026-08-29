@@ -1,6 +1,10 @@
 import type { App, TFile } from "obsidian";
+import { forEachConcurrent } from "./async-pool";
+import { monotonicNow, type IndexDiagnostics } from "./diagnostics";
 import { countMarkdownProseWords } from "./parser";
 import { markdownFilesInFolder } from "./vault-files";
+
+const INDEX_READ_CONCURRENCY = 8;
 
 function normalizeFolder(value: string): string {
   return value.trim().replace(/\\/gu, "/").replace(/\/{2,}/gu, "/").replace(/^\/+|\/+$/gu, "");
@@ -24,7 +28,11 @@ export class AdditionalWordIndex {
   private readonly records = new Map<string, number>();
   private wordTotal = 0;
   private ready = false;
+  private revision = 0;
   private rebuilding: Promise<void> | null = null;
+  private rebuildRequested = false;
+  private lastRebuildFileCount: number | null = null;
+  private lastRebuildDurationMs: number | null = null;
 
   constructor(
     private readonly app: App,
@@ -36,19 +44,38 @@ export class AdditionalWordIndex {
     return this.wordTotal;
   }
 
+  get isReady(): boolean {
+    return this.ready;
+  }
+
+  get diagnostics(): IndexDiagnostics {
+    return {
+      recordCount: this.records.size,
+      lastRebuildFileCount: this.lastRebuildFileCount,
+      lastRebuildDurationMs: this.lastRebuildDurationMs
+    };
+  }
+
   reset(): void {
+    this.revision += 1;
     this.records.clear();
     this.wordTotal = 0;
     this.ready = false;
   }
 
   async ensureReady(): Promise<void> {
-    if (!this.ready) await this.rebuild();
+    while (!this.ready) {
+      if (this.rebuilding) await this.rebuilding;
+      else await this.rebuild();
+    }
   }
 
   async rebuild(): Promise<void> {
-    if (this.rebuilding) return this.rebuilding;
-    this.rebuilding = this.performRebuild();
+    if (this.rebuilding) {
+      this.rebuildRequested = true;
+      return this.rebuilding;
+    }
+    this.rebuilding = this.runRebuilds();
     try {
       await this.rebuilding;
     } finally {
@@ -80,21 +107,40 @@ export class AdditionalWordIndex {
     return pathIsInAdditionalWordFolder(file.path, this.getFolder());
   }
 
+  private async runRebuilds(): Promise<void> {
+    do {
+      this.rebuildRequested = false;
+      await this.performRebuild();
+    } while (this.rebuildRequested);
+  }
+
   private async performRebuild(): Promise<void> {
-    if (this.getFolder().length === 0) {
-      this.reset();
+    const startedAt = monotonicNow();
+    const revision = this.revision;
+    const folder = this.getFolder();
+    const locale = this.getLocale();
+    if (folder.length === 0) {
+      this.records.clear();
+      this.wordTotal = 0;
       this.ready = true;
+      this.lastRebuildFileCount = 0;
+      this.lastRebuildDurationMs = monotonicNow() - startedAt;
       return;
     }
-    const files = markdownFilesInFolder(this.app.vault, this.getFolder()).filter((file) => this.matches(file));
-    const parsed = await Promise.all(files.map(async (file) => {
+    const files = markdownFilesInFolder(this.app.vault, folder)
+      .filter((file) => pathIsInAdditionalWordFolder(file.path, folder));
+    const parsed = new Array<readonly [string, number]>(files.length);
+    await forEachConcurrent(files, INDEX_READ_CONCURRENCY, async (file, index) => {
       const content = await this.app.vault.cachedRead(file);
-      return [file.path, countMarkdownProseWords(content, this.getLocale())] as const;
-    }));
+      parsed[index] = [file.path, countMarkdownProseWords(content, locale)] as const;
+    }, true);
+    if (revision !== this.revision) return;
     this.records.clear();
     this.wordTotal = 0;
     for (const [path, words] of parsed) this.setWords(path, words);
     this.ready = true;
+    this.lastRebuildFileCount = files.length;
+    this.lastRebuildDurationMs = monotonicNow() - startedAt;
   }
 
   private setWords(path: string, words: number): void {

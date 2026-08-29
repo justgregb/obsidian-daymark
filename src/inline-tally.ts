@@ -53,6 +53,15 @@ export class InlineTally {
 
     const folder = this.plugin.settings.additionalWordFolder;
     if (folder.length === 0) return;
+    if (!this.plugin.additionalWordIndex.isReady) {
+      this.createMetric(
+        parent,
+        `${additionalWordFolderLabel(folder)} · All time`,
+        "Loading…",
+        "daymark-tally-additional-source"
+      );
+      return;
+    }
     const words = this.plugin.additionalWordIndex.totalWords;
     this.createMetric(
       parent,

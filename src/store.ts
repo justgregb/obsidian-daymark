@@ -1,5 +1,5 @@
 import { aggregateRecords } from "./aggregate";
-import { dateIsWithin, toIsoDate } from "./date";
+import { addDays, compareDates, dateIsWithin, toDate, toIsoDate } from "./date";
 import type { DailyRecord, PeriodAggregate, PeriodBounds } from "./types";
 
 const MAX_AGGREGATE_CACHE_ENTRIES = 64;
@@ -72,7 +72,7 @@ export class DaymarkStore {
       return cached.value;
     }
 
-    const value = aggregateRecords(this.records.values(), bounds);
+    const value = aggregateRecords(this.recordsForAggregation(bounds), bounds);
     this.aggregateCache.set(key, { bounds, value });
     while (this.aggregateCache.size > MAX_AGGREGATE_CACHE_ENTRIES) {
       const oldest = this.aggregateCache.keys().next().value;
@@ -98,7 +98,7 @@ export class DaymarkStore {
   }
 
   private adjustTags(record: DailyRecord, delta: 1 | -1): void {
-    for (const task of record.taggedTasks) {
+    for (const task of record.taggedValues) {
       const previous = this.tagCounts.get(task.tag) ?? 0;
       const next = previous + delta;
       if (next > 0) this.tagCounts.set(task.tag, next);
@@ -121,6 +121,27 @@ export class DaymarkStore {
   private invalidateAggregatesForDate(date: DailyRecord["date"]): void {
     for (const [key, cached] of this.aggregateCache) {
       if (dateIsWithin(date, cached.bounds)) this.aggregateCache.delete(key);
+    }
+  }
+
+  private recordsForAggregation(bounds: PeriodBounds): Iterable<DailyRecord> {
+    const periodDays = Math.round(
+      (toDate(bounds.end).getTime() - toDate(bounds.start).getTime()) / 86_400_000
+    );
+    const hasDuplicateDates = this.records.size !== this.recordsByIsoDate.size;
+    return hasDuplicateDates || this.records.size <= periodDays
+      ? this.records.values()
+      : this.recordsByDate(bounds);
+  }
+
+  private *recordsByDate(bounds: PeriodBounds): IterableIterator<DailyRecord> {
+    for (
+      let date = bounds.start;
+      compareDates(date, bounds.end) < 0;
+      date = addDays(date, 1)
+    ) {
+      const record = this.recordsByIsoDate.get(toIsoDate(date));
+      if (record) yield record;
     }
   }
 }

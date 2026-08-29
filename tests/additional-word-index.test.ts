@@ -40,6 +40,9 @@ describe("additional word-count folder", () => {
 
     await index.rebuild();
     expect(index.totalWords).toBe(6);
+    expect(index.diagnostics.recordCount).toBe(2);
+    expect(index.diagnostics.lastRebuildFileCount).toBe(2);
+    expect(index.diagnostics.lastRebuildDurationMs).toBeGreaterThanOrEqual(0);
 
     contents.set("Desk/Longform/Novel.md", "One two");
     await index.refresh(novel);
@@ -77,6 +80,42 @@ describe("additional word-count folder", () => {
     await index.rebuild();
 
     expect(scans).toBe(0);
+    expect(index.totalWords).toBe(0);
+  });
+
+  it("does not apply an in-flight folder result after the source is disabled", async () => {
+    const draft = fakeFile("Desk/Longform/Draft.md");
+    const longform = fakeFolder("Desk/Longform", [draft]);
+    let folder = "Desk/Longform";
+    let releaseRead!: () => void;
+    const readStarted = new Promise<void>((resolve) => {
+      releaseRead = resolve;
+    });
+    let finishRead!: () => void;
+    const readFinished = new Promise<void>((resolve) => {
+      finishRead = resolve;
+    });
+    const app = {
+      vault: {
+        getFolderByPath: (path: string) => path === "Desk/Longform" ? longform : null,
+        getRoot: () => fakeFolder(""),
+        cachedRead: async () => {
+          releaseRead();
+          await readFinished;
+          return "These stale words must not return";
+        }
+      }
+    } as unknown as ConstructorParameters<typeof AdditionalWordIndex>[0];
+    const index = new AdditionalWordIndex(app, () => folder, () => "en-US");
+
+    const loading = index.ensureReady();
+    await readStarted;
+    folder = "";
+    index.reset();
+    finishRead();
+    await loading;
+
+    expect(index.isReady).toBe(true);
     expect(index.totalWords).toBe(0);
   });
 });
