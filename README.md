@@ -77,12 +77,6 @@ You can choose your daily-note folder, template, date format, first weekday, rec
 
 Daymark counts journal prose while ignoring frontmatter, code, URLs, images, Markdown list lines, and formatting characters.
 
-## Diagnostics
-
-If Daymark feels slow during a large Sync, run **Daymark: Show diagnostics** from the command palette. It opens a read-only local report with index counts and recent processing timings, without including note names, paths, or contents.
-
-Contributors can run `npm run benchmark` to measure parsing and incremental aggregation with 100, 1,000, and 5,000 synthetic daily notes.
-
 ## Installation
 
 ### Install a release manually
@@ -139,7 +133,7 @@ Daymark is free and open source. If it makes journaling a little nicer, you can 
 
 ## Release status
 
-Version `0.2.7` is available through Obsidian's Community Plugins directory and as a manual GitHub release.
+Version `0.2.8` is available through Obsidian's Community Plugins directory and as a manual GitHub release.
 
 ## License
 

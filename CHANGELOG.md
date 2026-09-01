@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.2.8 — 2026-09-01
+
+- Replaced full-resolution Month and Week cover sources with centered 128px thumbnails generated locally through a bounded, sequential, disposable in-memory cache.
+- Removed the user-facing diagnostics command and its runtime timing instrumentation.
+
 ## 0.2.7 — 2026-08-29
 
 - Replaced automatic diagnostics copying with a read-only local diagnostics window, removing system copy-buffer access while preserving privacy-safe performance troubleshooting.

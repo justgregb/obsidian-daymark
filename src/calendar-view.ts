@@ -21,6 +21,14 @@ import {
 } from "./change-set";
 import { isSupportedCoverPath } from "./cover";
 import {
+  applyCoverThumbnail,
+  CoverThumbnailCache,
+  coverThumbnailFingerprint,
+  generateCoverThumbnailUrl,
+  resolveCoverThumbnail,
+  type CoverThumbnailSource
+} from "./cover-thumbnail-cache";
+import {
   dateIsWithin,
   datesEqual,
   getPeriodBounds,
@@ -85,10 +93,14 @@ export class DaymarkCalendarView extends ItemView {
   private footerEl: HTMLElement | null = null;
   private readonly pendingChanges = new DaymarkChangeAccumulator();
   private readonly coverCache = new Map<string, { metadata: unknown; cover: TFile | null }>();
+  private readonly coverThumbnails: CoverThumbnailCache;
   private readonly inlineTally: InlineTally;
 
   constructor(leaf: WorkspaceLeaf, private readonly plugin: DaymarkPlugin) {
     super(leaf);
+    this.coverThumbnails = new CoverThumbnailCache({
+      generate: (source, dimension) => this.generateCoverThumbnail(source, dimension)
+    });
     this.inlineTally = new InlineTally(plugin, () => this.renderFooterOnly());
   }
 
@@ -140,6 +152,21 @@ export class DaymarkCalendarView extends ItemView {
     this.opened = true;
     this.unsubscribe = this.plugin.subscribe((change) => this.schedulePluginChange(change));
     this.registerEvent(this.app.workspace.on("file-open", (file) => this.syncToFile(file)));
+    this.registerEvent(this.app.vault.on("modify", (file) => {
+      if (file instanceof TFile && isSupportedCoverPath(file.path)) {
+        this.refreshChangedCoverAssets([file.path]);
+      }
+    }));
+    this.registerEvent(this.app.vault.on("delete", (file) => {
+      if (file instanceof TFile && isSupportedCoverPath(file.path)) {
+        this.refreshChangedCoverAssets([file.path]);
+      }
+    }));
+    this.registerEvent(this.app.vault.on("rename", (file, oldPath) => {
+      const paths = [oldPath];
+      if (file instanceof TFile) paths.push(file.path);
+      if (paths.some((path) => isSupportedCoverPath(path))) this.refreshChangedCoverAssets(paths);
+    }));
     this.renderLoading();
     try {
       await this.plugin.ensureCalendarReady();
@@ -159,6 +186,7 @@ export class DaymarkCalendarView extends ItemView {
     this.unsubscribe = null;
     this.pendingChanges.take();
     this.coverCache.clear();
+    this.coverThumbnails.dispose();
     this.bodyEl = null;
     this.footerEl = null;
   }
@@ -187,6 +215,7 @@ export class DaymarkCalendarView extends ItemView {
   private render(): void {
     if (!this.opened) return;
     this.cancelScheduledRender();
+    this.prepareCoverWorkForRender();
     this.pendingChanges.take();
     const renderVersion = ++this.renderVersion;
     this.prepareRenderContext();
@@ -396,7 +425,6 @@ export class DaymarkCalendarView extends ItemView {
     if (weekday === 0 || weekday === 6) classes += " is-weekend";
     if (highlighted) classes += " is-highlighted";
     if (record) classes += " has-note";
-    if (cover) classes += " has-cover";
     const button = parent.createEl("button", { cls: classes });
     button.dataset.date = isoDate;
     button.setAttr("role", "gridcell");
@@ -409,11 +437,7 @@ export class DaymarkCalendarView extends ItemView {
     button.setAttr("aria-labelledby", label.id);
     if (today) button.setAttr("aria-current", "date");
     if (cover) {
-      const image = button.createEl("img", { cls: "daymark-calendar-day-cover" });
-      image.setAttr("alt", "");
-      image.setAttr("decoding", "async");
-      image.setAttr("loading", "lazy");
-      image.src = this.app.vault.getResourcePath(cover);
+      this.createCoverImage(button, "daymark-calendar-day-cover", cover);
     }
     button.createSpan({ cls: "daymark-calendar-day-number", text: String(date.day) });
     button.addEventListener("click", () => {
@@ -433,7 +457,6 @@ export class DaymarkCalendarView extends ItemView {
     if (today) classes += " is-today";
     if (highlighted) classes += " is-highlighted";
     if (record) classes += " has-note";
-    if (cover) classes += " has-cover";
     const row = parent.createEl("button", { cls: classes });
     row.dataset.date = isoDate;
     const label = row.createSpan({
@@ -447,11 +470,7 @@ export class DaymarkCalendarView extends ItemView {
 
     const tile = row.createSpan("daymark-week-date-tile");
     if (cover) {
-      const image = tile.createEl("img", { cls: "daymark-week-date-cover" });
-      image.setAttr("alt", "");
-      image.setAttr("decoding", "async");
-      image.setAttr("loading", "lazy");
-      image.src = this.app.vault.getResourcePath(cover);
+      this.createCoverImage(row, "daymark-week-date-cover", cover, tile);
     }
     tile.createSpan({ cls: "daymark-week-date-number", text: String(date.day) });
 
@@ -500,7 +519,9 @@ export class DaymarkCalendarView extends ItemView {
     if (!(note instanceof TFile)) return null;
     const metadata = this.app.metadataCache.getFileCache(note);
     const cached = this.coverCache.get(record.path);
-    if (cached?.metadata === metadata) {
+    const cachedCoverExists = !cached?.cover
+      || this.app.vault.getAbstractFileByPath(cached.cover.path) === cached.cover;
+    if (cached?.metadata === metadata && cachedCoverExists) {
       this.coverCache.delete(record.path);
       this.coverCache.set(record.path, cached);
       return cached.cover;
@@ -521,6 +542,62 @@ export class DaymarkCalendarView extends ItemView {
       this.coverCache.delete(oldest);
     }
     return cover;
+  }
+
+  private createCoverImage(
+    owner: HTMLElement,
+    className: string,
+    cover: TFile,
+    parent = owner
+  ): void {
+    const source = this.coverThumbnailSource(cover);
+    const fingerprint = coverThumbnailFingerprint(source, this.coverThumbnails.dimension);
+    const image = parent.createEl("img", { cls: className });
+    image.setAttr("alt", "");
+    image.setAttr("aria-hidden", "true");
+    image.setAttr("decoding", "async");
+    image.setAttr("loading", "lazy");
+    image.dataset.coverPath = cover.path;
+    image.dataset.coverFingerprint = fingerprint;
+
+    const resolution = resolveCoverThumbnail(
+      this.plugin.settings.showCoverPhotos,
+      this.coverThumbnails,
+      source
+    );
+    if (resolution.url) {
+      image.src = resolution.url;
+      owner.addClass("has-cover");
+      return;
+    }
+    if (!resolution.pending) return;
+    void resolution.pending.then((url) => {
+      if (applyCoverThumbnail(image, fingerprint, url)) owner.addClass("has-cover");
+    });
+  }
+
+  private coverThumbnailSource(cover: TFile): CoverThumbnailSource {
+    return {
+      path: cover.path,
+      mtime: cover.stat.mtime,
+      size: cover.stat.size
+    };
+  }
+
+  private async generateCoverThumbnail(
+    source: CoverThumbnailSource,
+    dimension: number
+  ): Promise<string | null> {
+    const file = this.app.vault.getAbstractFileByPath(source.path);
+    if (!(file instanceof TFile)
+      || file.stat.mtime !== source.mtime
+      || file.stat.size !== source.size) return null;
+    const bytes = await this.app.vault.readBinary(file);
+    const current = this.app.vault.getAbstractFileByPath(source.path);
+    if (!(current instanceof TFile)
+      || current.stat.mtime !== source.mtime
+      || current.stat.size !== source.size) return null;
+    return generateCoverThumbnailUrl(bytes, source.path, dimension);
   }
 
   private createFooter(parent: HTMLElement, aggregate: PeriodAggregate, renderVersion: number): void {
@@ -605,6 +682,7 @@ export class DaymarkCalendarView extends ItemView {
 
   private renderBodyOnly(): void {
     if (!this.opened || !this.bodyEl) return;
+    this.prepareCoverWorkForRender();
     this.prepareRenderContext();
     const weekStart = this.plugin.resolveWeekStart();
     const bounds = this.currentBounds(weekStart);
@@ -706,6 +784,29 @@ export class DaymarkCalendarView extends ItemView {
     if (currentCover && replacementCover && currentCover.src === replacementCover.src) {
       replacementCover.replaceWith(currentCover);
     }
+  }
+
+  private prepareCoverWorkForRender(): void {
+    if (this.plugin.settings.showCoverPhotos) this.coverThumbnails.cancelPending();
+    else this.coverThumbnails.clear();
+  }
+
+  private refreshChangedCoverAssets(paths: readonly string[]): void {
+    const changed = new Set(paths);
+    for (const path of changed) this.coverThumbnails.invalidatePath(path);
+    for (const [notePath, cached] of this.coverCache) {
+      if (cached.cover && changed.has(cached.cover.path)) this.coverCache.delete(notePath);
+    }
+    if (!this.opened || !this.plugin.settings.showCoverPhotos || !this.bodyEl || this.mode === "year") return;
+    const dates = new Set<string>();
+    this.bodyEl.querySelectorAll<HTMLImageElement>("img[data-cover-path]").forEach((image) => {
+      const path = image.dataset.coverPath;
+      if (!path || !changed.has(path)) return;
+      const dated = image.closest("[data-date]") as unknown;
+      const date = dated instanceof HTMLElement ? dated.dataset.date : undefined;
+      if (date) dates.add(date);
+    });
+    if (dates.size > 0) this.patchVisibleDates([...dates], this.currentBounds());
   }
 
   private prepareRenderContext(): void {

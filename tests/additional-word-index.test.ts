@@ -40,9 +40,6 @@ describe("additional word-count folder", () => {
 
     await index.rebuild();
     expect(index.totalWords).toBe(6);
-    expect(index.diagnostics.recordCount).toBe(2);
-    expect(index.diagnostics.lastRebuildFileCount).toBe(2);
-    expect(index.diagnostics.lastRebuildDurationMs).toBeGreaterThanOrEqual(0);
 
     contents.set("Desk/Longform/Novel.md", "One two");
     await index.refresh(novel);

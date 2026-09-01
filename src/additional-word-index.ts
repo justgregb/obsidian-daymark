@@ -1,6 +1,5 @@
 import type { App, TFile } from "obsidian";
 import { forEachConcurrent } from "./async-pool";
-import { monotonicNow, type IndexDiagnostics } from "./diagnostics";
 import { countMarkdownProseWords } from "./parser";
 import { markdownFilesInFolder } from "./vault-files";
 
@@ -31,8 +30,6 @@ export class AdditionalWordIndex {
   private revision = 0;
   private rebuilding: Promise<void> | null = null;
   private rebuildRequested = false;
-  private lastRebuildFileCount: number | null = null;
-  private lastRebuildDurationMs: number | null = null;
 
   constructor(
     private readonly app: App,
@@ -46,14 +43,6 @@ export class AdditionalWordIndex {
 
   get isReady(): boolean {
     return this.ready;
-  }
-
-  get diagnostics(): IndexDiagnostics {
-    return {
-      recordCount: this.records.size,
-      lastRebuildFileCount: this.lastRebuildFileCount,
-      lastRebuildDurationMs: this.lastRebuildDurationMs
-    };
   }
 
   reset(): void {
@@ -115,7 +104,6 @@ export class AdditionalWordIndex {
   }
 
   private async performRebuild(): Promise<void> {
-    const startedAt = monotonicNow();
     const revision = this.revision;
     const folder = this.getFolder();
     const locale = this.getLocale();
@@ -123,8 +111,6 @@ export class AdditionalWordIndex {
       this.records.clear();
       this.wordTotal = 0;
       this.ready = true;
-      this.lastRebuildFileCount = 0;
-      this.lastRebuildDurationMs = monotonicNow() - startedAt;
       return;
     }
     const files = markdownFilesInFolder(this.app.vault, folder)
@@ -139,8 +125,6 @@ export class AdditionalWordIndex {
     this.wordTotal = 0;
     for (const [path, words] of parsed) this.setWords(path, words);
     this.ready = true;
-    this.lastRebuildFileCount = files.length;
-    this.lastRebuildDurationMs = monotonicNow() - startedAt;
   }
 
   private setWords(path: string, words: number): void {

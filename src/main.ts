@@ -1,4 +1,4 @@
-import { normalizePath, Notice, Platform, Plugin, TFile, TFolder, type TAbstractFile, type WorkspaceLeaf } from "obsidian";
+import { normalizePath, Notice, Plugin, TFile, TFolder, type TAbstractFile, type WorkspaceLeaf } from "obsidian";
 import { AdditionalWordIndex, pathIsInAdditionalWordFolder } from "./additional-word-index";
 import { forEachConcurrent } from "./async-pool";
 import { DAYMARK_CALENDAR_VIEW_TYPE, DaymarkCalendarView } from "./calendar-view";
@@ -10,12 +10,6 @@ import {
 import { confirmDailyNoteCreation } from "./create-note-modal";
 import { dailyNotePath, renderDailyNoteTemplate } from "./daily-note";
 import { parseIsoDate, todayPlainDate, toIsoDate } from "./date";
-import {
-  createDiagnosticsReport,
-  monotonicNow,
-  type SyncBatchDiagnostics
-} from "./diagnostics";
-import { DiagnosticsModal } from "./diagnostics-modal";
 import { promptForDate } from "./go-to-date-modal";
 import { DaymarkIndex } from "./indexer";
 import { isValidObsidianDateFormat } from "./obsidian-date";
@@ -76,7 +70,6 @@ interface PendingFileOperation {
 const SYNC_BATCH_QUIET_MS = 250;
 const SYNC_BATCH_MAX_MS = 900;
 const SYNC_REFRESH_CONCURRENCY = 6;
-const MAX_RECENT_SYNC_BATCHES = 8;
 
 export default class DaymarkPlugin extends Plugin {
   override settings: DaymarkSettings = {
@@ -89,8 +82,6 @@ export default class DaymarkPlugin extends Plugin {
   private readonly listeners = new Set<(change: DaymarkChangeSet) => void>();
   private readonly pendingFileOperations = new Map<string, PendingFileOperation>();
   private readonly operationRevisions = new PathOperationRevisions();
-  private readonly recentSyncBatches: SyncBatchDiagnostics[] = [];
-  private coalescedOperationCount = 0;
   private syncBatchTimer: number | null = null;
   private syncBatchStartedAt: number | null = null;
   private syncBatchChain = Promise.resolve();
@@ -161,11 +152,6 @@ export default class DaymarkPlugin extends Plugin {
       callback: () => {
         void this.rebuildIndex().then(() => new Notice("Daymark index rebuilt."));
       }
-    });
-    this.addCommand({
-      id: "show-diagnostics",
-      name: "Show diagnostics",
-      callback: () => this.showDiagnostics()
     });
     this.addCommand({
       id: "save-current-period",
@@ -462,8 +448,6 @@ export default class DaymarkPlugin extends Plugin {
         reportPaths: new Set()
       };
       this.pendingFileOperations.set(path, operation);
-    } else {
-      this.coalescedOperationCount += 1;
     }
     operation.sequence = sequence;
     operation.kind = kind;
@@ -498,31 +482,18 @@ export default class DaymarkPlugin extends Plugin {
   }
 
   private async processFileBatch(operations: readonly PendingFileOperation[]): Promise<void> {
-    const startedAt = monotonicNow();
     const changes = new DaymarkChangeAccumulator();
     const prioritized = this.prioritizeFileOperations(operations);
-    let processedCount = 0;
-    let supersededCount = 0;
     await forEachConcurrent(prioritized, SYNC_REFRESH_CONCURRENCY, async (operation) => {
       const operationChanges = new DaymarkChangeAccumulator();
       const processed = await this.processFileOperation(operation, operationChanges);
-      if (!processed) {
-        supersededCount += 1;
-        return;
-      }
-      processedCount += 1;
+      if (!processed) return;
       const change = operationChanges.take();
       if (change) changes.add(change);
       this.operationRevisions.complete(operation);
     }, true);
     const change = changes.take();
     if (change) this.emitChange(change);
-    this.recordSyncBatch({
-      operationCount: operations.length,
-      processedCount,
-      supersededCount,
-      durationMs: monotonicNow() - startedAt
-    });
   }
 
   private async processFileOperation(
@@ -583,25 +554,6 @@ export default class DaymarkPlugin extends Plugin {
       }
       return priority;
     });
-  }
-
-  private recordSyncBatch(batch: SyncBatchDiagnostics): void {
-    this.recentSyncBatches.push(batch);
-    if (this.recentSyncBatches.length > MAX_RECENT_SYNC_BATCHES) this.recentSyncBatches.shift();
-  }
-
-  private showDiagnostics(): void {
-    const report = createDiagnosticsReport({
-      version: this.manifest.version,
-      platform: Platform.isMobile ? "mobile" : "desktop",
-      dailyIndex: this.index.diagnostics,
-      additionalIndex: this.additionalWordIndex.diagnostics,
-      additionalIndexEnabled: this.usesAdditionalWordIndex(),
-      pendingOperationCount: this.pendingFileOperations.size,
-      coalescedOperationCount: this.coalescedOperationCount,
-      recentSyncBatches: this.recentSyncBatches
-    });
-    new DiagnosticsModal(this.app, report).open();
   }
 
   private scheduleRebuild(): void {

@@ -2,7 +2,6 @@ import type { App, TFile } from "obsidian";
 import { forEachConcurrent } from "./async-pool";
 import { toIsoDate } from "./date";
 import { dateFromDailyNotePath } from "./discovery";
-import { monotonicNow, type IndexDiagnostics } from "./diagnostics";
 import { parseObsidianDateFormat } from "./obsidian-date";
 import { parseDailyNote } from "./parser";
 import { DaymarkStore } from "./store";
@@ -16,8 +15,6 @@ export class DaymarkIndex {
   private ready = false;
   private rebuilding: Promise<void> | null = null;
   private rebuildRequested = false;
-  private lastRebuildFileCount: number | null = null;
-  private lastRebuildDurationMs: number | null = null;
 
   constructor(
     private readonly app: App,
@@ -35,14 +32,6 @@ export class DaymarkIndex {
 
   get isReady(): boolean {
     return this.ready;
-  }
-
-  get diagnostics(): IndexDiagnostics {
-    return {
-      recordCount: this.store.size,
-      lastRebuildFileCount: this.lastRebuildFileCount,
-      lastRebuildDurationMs: this.lastRebuildDurationMs
-    };
   }
 
   knownTags(): readonly string[] {
@@ -99,7 +88,6 @@ export class DaymarkIndex {
   }
 
   private async performRebuild(): Promise<void> {
-    const startedAt = monotonicNow();
     const settings = this.getSettings();
     const locale = this.getLocale();
     const candidates: Array<{ file: TFile; date: PlainDate }> = [];
@@ -113,8 +101,6 @@ export class DaymarkIndex {
     }, true);
     this.store.replace(parsed);
     this.ready = true;
-    this.lastRebuildFileCount = candidates.length;
-    this.lastRebuildDurationMs = monotonicNow() - startedAt;
   }
 
   dateForFile(file: TFile): PlainDate | null {

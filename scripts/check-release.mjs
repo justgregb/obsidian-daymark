@@ -25,3 +25,6 @@ const forbiddenBrowserCapability = ["clip", "board"].join("");
 if (bundle.toLowerCase().includes(forbiddenBrowserCapability)) {
   throw new Error("Release bundle must not access the system copy buffer.");
 }
+if (bundle.includes("getResourcePath")) {
+  throw new Error("Release bundle must not assign original vault resource URLs to calendar covers.");
+}

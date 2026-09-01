@@ -53,9 +53,6 @@ describe("daily-note index", () => {
     expect(aggregate.photos).toBe(2);
     expect(reads).toEqual([firstPath, secondPath]);
     expect(index.isReady).toBe(true);
-    expect(index.diagnostics.recordCount).toBe(2);
-    expect(index.diagnostics.lastRebuildFileCount).toBe(2);
-    expect(index.diagnostics.lastRebuildDurationMs).toBeGreaterThanOrEqual(0);
   });
 
   it("tracks known completed-item tags through incremental changes", async () => {

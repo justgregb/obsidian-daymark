@@ -79,29 +79,3 @@
   justify-content: flex-end;
   margin-top: var(--size-4-4);
 }
-
-.daymark-diagnostics-modal {
-  max-width: min(620px, calc(100vw - var(--size-4-8)));
-}
-
-.daymark-diagnostics-description {
-  color: var(--text-muted);
-  line-height: var(--line-height-normal);
-  margin: 0 0 var(--size-4-3);
-}
-
-.daymark-diagnostics-output {
-  box-sizing: border-box;
-  font-family: var(--font-monospace);
-  font-size: var(--font-smallest);
-  line-height: var(--line-height-normal);
-  min-height: 220px;
-  resize: vertical;
-  width: 100%;
-}
-
-.daymark-diagnostics-actions {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: var(--size-4-4);
-}
