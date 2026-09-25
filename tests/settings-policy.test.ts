@@ -7,7 +7,9 @@ import {
 import type { DaymarkSettings } from "../src/types";
 
 const settings: DaymarkSettings = {
-  settingsVersion: 3,
+  settingsVersion: 4,
+  calendarLayout: "standard",
+  dayNames: {},
   journalFolder: "Journal",
   dateFormat: "YYYY-MM-DD",
   templatePath: "Shelf/Templates/Daily Note Template.md",
@@ -22,6 +24,14 @@ const settings: DaymarkSettings = {
 };
 
 describe("settings refresh policy", () => {
+  it("refreshes margin preferences without rebuilding note indexes", () => {
+    const margin: DaymarkSettings = { ...settings, calendarLayout: "margin" };
+    expect(settingsAreEqual(settings, margin)).toBe(false);
+    expect(settingsAreEqual(margin, { ...margin })).toBe(true);
+    expect(settingsAreEqual(margin, { ...margin, calendarLayout: "standard" })).toBe(false);
+    expect(settingsRequireRebuild(settings, margin)).toBe(false);
+    expect(settingsRequireAdditionalWordRebuild(settings, margin)).toBe(false);
+  });
   it("rebuilds only when the daily-note source changes", () => {
     expect(settingsRequireRebuild(settings, { ...settings, journalFolder: "Daily" })).toBe(true);
     expect(settingsRequireRebuild(settings, { ...settings, dateFormat: "YYYY/MM/DD" })).toBe(true);

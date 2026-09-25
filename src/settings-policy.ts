@@ -1,3 +1,4 @@
+import { dayNamesAreEqual } from "./day-names";
 import type { DaymarkSettings } from "./types";
 import { tallyMetricLabelsAreEqual, tallyTagLabelsAreEqual } from "./format";
 
@@ -11,6 +12,8 @@ export function settingsAreEqual(left: DaymarkSettings, right: DaymarkSettings):
     && left.highlightedWeekdays.length === right.highlightedWeekdays.length
     && left.highlightedWeekdays.every((weekday, index) => weekday === right.highlightedWeekdays[index])
     && left.showCoverPhotos === right.showCoverPhotos
+    && left.calendarLayout === right.calendarLayout
+    && dayNamesAreEqual(left.dayNames, right.dayNames)
     && left.showCalendarTotals === right.showCalendarTotals
     && left.tallyEnabled === right.tallyEnabled
     && tallyMetricLabelsAreEqual(left.tallyMetricLabels, right.tallyMetricLabels)

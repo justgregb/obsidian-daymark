@@ -13,6 +13,9 @@ describe("settings migration", () => {
   it("leaves the current schema stable", () => {
     const result = migrateStoredSettings({
       settingsVersion: CURRENT_SETTINGS_VERSION,
+      calendarLayout: "standard",
+      marginTag: "",
+      dayNames: {},
       showCalendarTotals: true,
       tallyMetricLabels: { photos: "Images" },
       tallyTagLabels: { running: "Kilometres run" }
@@ -36,7 +39,7 @@ describe("settings migration", () => {
       tallyEnabled: false
     });
     expect(result.settings).toMatchObject({
-      settingsVersion: 3,
+      settingsVersion: CURRENT_SETTINGS_VERSION,
       journalFolder: "Diary",
       dateFormat: "DD.MM.YYYY",
       tallyEnabled: false,
@@ -57,6 +60,31 @@ describe("settings migration", () => {
     });
     expect(result.settings.tallyTagLabels).toEqual({ running: "Kilometres run" });
     expect(result.changed).toBe(true);
+  });
+
+  it("adds margin preferences without changing existing version 3 settings", () => {
+    const before = {
+      settingsVersion: 3,
+      journalFolder: "Journal",
+      dateFormat: "YYYY/MM/YYYY-MM-DD",
+      showCalendarTotals: false,
+      showCoverPhotos: false,
+      tallyEnabled: true,
+      tallyMetricLabels: { photos: "Images" },
+      tallyTagLabels: { swimming: "Swim sessions" }
+    };
+    const result = migrateStoredSettings(before);
+    expect(result.settings).toEqual({
+      ...before, settingsVersion: CURRENT_SETTINGS_VERSION, calendarLayout: "standard", dayNames: {}
+    });
+    expect(before.settingsVersion).toBe(3);
+  });
+
+  it("validates the layout while preserving opaque saved keys", () => {
+    expect(migrateStoredSettings({ calendarLayout: "margin", marginTag: " #SWIMMING " }).settings)
+      .toMatchObject({ calendarLayout: "margin", marginTag: " #SWIMMING " });
+    expect(migrateStoredSettings({ calendarLayout: [], marginTag: 12 }).settings)
+      .toMatchObject({ calendarLayout: "standard", marginTag: 12 });
   });
 
   it("normalizes core metric aliases and drops unknown keys", () => {

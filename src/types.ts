@@ -1,4 +1,5 @@
 export type PeriodMode = "week" | "month" | "year";
+export type CalendarLayout = "standard" | "margin";
 
 export type WeekStartSetting = "locale" | "sunday" | "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday";
 
@@ -20,6 +21,8 @@ export interface TaggedValue {
   value: number;
 }
 
+export interface LinkedNote { path: string; title: string }
+
 export interface DailyRecord {
   path: string;
   basename: string;
@@ -27,6 +30,10 @@ export interface DailyRecord {
   isoDate: string;
   words: number;
   photos: number;
+  linkedWords?: number;
+  linkedNoteCount?: number;
+  linkedNotes?: readonly LinkedNote[];
+  linkedWritingStatus?: "loading" | "unavailable";
   totalCheckboxes: number;
   completedCheckboxes: number;
   taggedValues: TaggedValue[];
@@ -75,6 +82,8 @@ export interface DaymarkSettings {
   weekStart: WeekStartSetting;
   highlightedWeekdays: Weekday[];
   showCoverPhotos: boolean;
+  calendarLayout: CalendarLayout;
+  dayNames: Record<string, string>;
   showCalendarTotals: boolean;
   tallyEnabled: boolean;
   tallyMetricLabels: Partial<Record<TallyMetric, string>>;
@@ -84,7 +93,7 @@ export interface DaymarkSettings {
 export type TallyMetric = "dailyNotes" | "words" | "photos";
 
 export const DEFAULT_SETTINGS: DaymarkSettings = {
-  settingsVersion: 3,
+  settingsVersion: 5,
   journalFolder: "Journal",
   dateFormat: "YYYY-MM-DD",
   templatePath: "",
@@ -92,6 +101,8 @@ export const DEFAULT_SETTINGS: DaymarkSettings = {
   weekStart: "locale",
   highlightedWeekdays: [],
   showCoverPhotos: true,
+  calendarLayout: "standard",
+  dayNames: {},
   showCalendarTotals: true,
   tallyEnabled: true,
   tallyMetricLabels: {},

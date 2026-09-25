@@ -102,6 +102,16 @@ export class DaymarkSettingTab extends PluginSettingTab {
     ];
     const calendarItems: SettingDefinition[] = [
       {
+        name: "Calendar layout",
+        desc: "Margin shows one month as a date spine with optional day names. Standard keeps the week, month, and year calendar.",
+        control: {
+          type: "dropdown",
+          key: "calendarLayout",
+          defaultValue: "standard",
+          options: { standard: "Standard", margin: "Margin" }
+        }
+      },
+      {
         name: "Start week on",
         desc: "Choose the first calendar column. Locale default follows Obsidian's language.",
         control: {
@@ -118,7 +128,7 @@ export class DaymarkSettingTab extends PluginSettingTab {
       },
       {
         name: "Show note covers",
-        desc: "Use the first local image in a daily note as that day's calendar cover.",
+        desc: "Use local images as calendar covers. In Margin layout, show a photo icon beside the date.",
         control: { type: "toggle", key: "showCoverPhotos" }
       },
       {
@@ -239,6 +249,7 @@ export class DaymarkSettingTab extends PluginSettingTab {
       case "templatePath": return this.plugin.settings.templatePath;
       case "weekStart": return this.plugin.settings.weekStart;
       case "showCoverPhotos": return this.plugin.settings.showCoverPhotos;
+      case "calendarLayout": return this.plugin.settings.calendarLayout;
       case "showCalendarTotals": return this.plugin.settings.showCalendarTotals;
       case "tallyEnabled": return this.plugin.settings.tallyEnabled;
       case "additionalWordFolder": return this.plugin.settings.additionalWordFolder;
@@ -261,6 +272,9 @@ export class DaymarkSettingTab extends PluginSettingTab {
       case "showCoverPhotos":
         if (typeof value === "boolean") update = { showCoverPhotos: value };
         break;
+      case "calendarLayout":
+        if (value === "standard" || value === "margin") update = { calendarLayout: value };
+        break;
       case "showCalendarTotals":
         if (typeof value === "boolean") update = { showCalendarTotals: value };
         break;
@@ -273,7 +287,7 @@ export class DaymarkSettingTab extends PluginSettingTab {
     }
     if (!update) return;
     await this.plugin.updateSettings(update);
-    if (key === "weekStart" || key === "tallyEnabled") this.update();
+    if (key === "weekStart" || key === "tallyEnabled" || key === "calendarLayout") this.update();
     else this.refreshDomState();
   }
 

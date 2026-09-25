@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Daymark production Margin renderer</title>
+  <link rel="stylesheet" href="../../styles.css">
+  <link rel="stylesheet" href="fixtures.css">
+  <style>
+    :root { --font-ui-large: 16px; --font-ui-medium: 14px; --font-ui-small: 13px; --font-ui-smaller: 12px; --background-modifier-active-hover: rgba(105,87,134,.1); --text-accent: #695786; --text-on-accent: white; --interactive-accent: #695786; }
+    body { padding: 16px; }
+    #margin-fixtures { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; }
+    .margin-fixture {
+      background: var(--background-primary); flex: none;
+      --nav-item-background-active: color-mix(in srgb, var(--interactive-accent) 14%, transparent);
+      --nav-item-color-active: var(--text-normal);
+      --nav-item-background-hover: var(--background-modifier-hover);
+      --nav-item-radius: var(--radius-s);
+      --nav-item-weight-active: 600;
+    }
+    .margin-fixture .daymark-calendar-container { display: flex; flex-direction: column; position: relative; height: calc(100vh - 120px); min-height: 180px; }
+    .theme-dark { --text-accent: #bea6df; --interactive-accent: #967eb8; --text-on-accent: #151119; }
+    output { display: block; min-height: 30px; font-size: 11px; padding: 0 14px; color: var(--text-muted); }
+    .fixture-tooltip-samples { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+    .fixture-tooltip-samples .tooltip { position: static; transform: none; }
+    .fixture-context-menu { position: fixed; z-index: 100; display: grid; padding: 4px; border: 1px solid #aaa; border-radius: 5px; background: #fff; box-shadow: 0 3px 12px #0002; }
+    .fixture-context-menu button { background: transparent; border: 0; padding: 7px 14px; text-align: left; color: #222; }
+    .fixture-context-menu button:hover, .fixture-context-menu button:focus-visible { background: #eee; }
+  </style>
+</head>
+<body>
+  <div class="fixture-tooltip-samples" aria-label="Tooltip style samples">
+    <span class="tooltip daymark-margin-tooltip">1,400 words</span>
+    <span class="tooltip daymark-margin-tooltip">Go to today</span>
+    <span class="tooltip daymark-margin-tooltip">Name day</span>
+  </div>
+  <main id="margin-fixtures"></main>
+  <script src="margin-fixture.js"></script>
+</body>
+</html>

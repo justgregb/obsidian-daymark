@@ -1,9 +1,9 @@
 {
   "id": "daymark",
   "name": "Daymark",
-  "version": "0.2.8",
+  "version": "0.3.0",
   "minAppVersion": "1.13.0",
-  "description": "Browse daily notes in week, month, and year calendar views, capture quick thoughts, and summarize journal activity with Tally.",
+  "description": "Browse daily notes in calendar or Margin views, capture quick thoughts, and summarize journal activity with Tally.",
   "author": "Greg B.",
   "fundingUrl": "https://ko-fi.com/iamgregb",
   "isDesktopOnly": false

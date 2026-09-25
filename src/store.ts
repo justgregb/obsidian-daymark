@@ -86,6 +86,10 @@ export class DaymarkStore {
     return this.recordsByIsoDate.get(isoDate) ?? null;
   }
 
+  getByPath(path: string): DailyRecord | null {
+    return this.records.get(path) ?? null;
+  }
+
   get size(): number {
     return this.records.size;
   }

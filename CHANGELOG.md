@@ -1,6 +1,18 @@
 # Changelog
 
-## Unreleased
+## 0.3.0 — 2026-09-25
+
+- Add the optional **Margin** calendar layout: a continuous timeline with compact date blocks, month separators, a coiled writing spine, and a fixed Today/Tally header. Standard remains the default.
+- Add optional day names stored locally by date, with inline editing, keyboard and context-menu actions, and complete leading emoji support. Naming never changes Markdown notes.
+- Show directly linked local Markdown notes as smaller, dotted-underlined titles. Reveal additional links with a stable count and chevron, preserving scroll position and row alignment. Days with links use the context menu for naming, with no pencil column.
+- Fold past runs of at least three missing, unnamed dates into paper stacks with the existing two-circle binding and stepped page edges. Keep the fold control anchored and retain existing notes, Today, future dates, selection, and active editors.
+- Reflect daily and directly linked writing with varied, stable coils. Keep brief notes close to a straight line, show pending counts without moving dates, and retain writing/photo tooltips across the full spine gutter.
+- Add continuous recurring-day paper grain in the spine’s theme-derived ink, with stronger contrast and a fixed repeat that stays aligned between rows. Preserve native selected-day styling, keyboard focus, compact density, and mobile touch targets.
+- Make Margin’s Today action navigation-only, centering the date without opening a note or prompting for creation. Update Today at local midnight and after Obsidian resumes.
+- Add monthly Tally lenses for daily bars and values while preserving custom labels, recorded zeroes, Save, and additional-writing totals. Keep the selected metric available to turn off in empty months.
+- Keep scroll work independent of layout measurement, retain unchanged DOM rows and resize subscriptions, update ordinary edits by direct date lookup, and ignore empty or disposed timeline updates. Bound nearby-month, formatter, thumbnail, and coil caches; defer linked controls and Tally content until needed.
+- Reuse indexed daily-word counts and unchanged linked metadata. Cancel superseded background work, merge concurrent edits and removals into rebuilds, release read bookkeeping, and dispose indexes and listeners on unload.
+- Remove retired Margin experiments and unused indexing calculations. Consolidate documentation around the final layout and require matching package, manifest, lockfile, and compatibility versions in release checks.
 
 ## 0.2.8 — 2026-09-01
 

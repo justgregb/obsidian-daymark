@@ -109,7 +109,7 @@ export class CoverThumbnailCache {
     if (this.disposed) return null;
     const key = this.observe(source);
     const entry = this.entries.get(key);
-    if (!entry) return null;
+    if (!entry) { this.forgetUnusedFingerprint(key, source.path); return null; }
     this.entries.delete(key);
     this.entries.set(key, entry);
     return entry.url;
@@ -122,6 +122,7 @@ export class CoverThumbnailCache {
     const key = coverThumbnailFingerprint(source, this.dimension);
     const existing = this.inFlight.get(key);
     if (existing) return existing.promise;
+    this.latestFingerprintByPath.set(source.path, key);
 
     let resolve!: (url: string | null) => void;
     const promise = new Promise<string | null>((complete) => {
@@ -198,6 +199,7 @@ export class CoverThumbnailCache {
         if (!url || this.disposed
           || this.latestFingerprintByPath.get(pending.source.path) !== pending.key) {
           if (url) this.safeRevoke(url);
+          this.forgetUnusedFingerprint(pending.key, pending.source.path);
           pending.resolve(null);
           continue;
         }
@@ -248,7 +250,14 @@ export class CoverThumbnailCache {
 
   private removeEntry(key: string, entry: ThumbnailEntry): void {
     if (!this.entries.delete(key)) return;
+    this.forgetUnusedFingerprint(key, entry.path);
     this.safeRevoke(entry.url);
+  }
+
+  private forgetUnusedFingerprint(key: string, path: string): void {
+    if (!this.entries.has(key) && !this.inFlight.has(key) && this.latestFingerprintByPath.get(path) === key) {
+      this.latestFingerprintByPath.delete(path);
+    }
   }
 
   private safeRevoke(url: string): void {

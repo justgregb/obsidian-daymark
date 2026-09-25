@@ -73,16 +73,6 @@ export function tallyMetricLabelsAreEqual(
   return TALLY_METRICS.every((metric) => (left[metric] ?? "") === (right[metric] ?? ""));
 }
 
-export function serializeTallyTagLabels(labels: Readonly<Record<string, string>>): string {
-  return JSON.stringify(Object.entries(labels).sort(([left], [right]) => left.localeCompare(right)));
-}
-
-export function serializeTallyMetricLabels(
-  labels: Readonly<Partial<Record<TallyMetric, string>>>
-): string {
-  return JSON.stringify(TALLY_METRICS.map((metric) => [metric, labels[metric] ?? ""]));
-}
-
 export function resolveTallyMetricLabel(
   metric: TallyMetric,
   labels: Readonly<Partial<Record<TallyMetric, string>>>

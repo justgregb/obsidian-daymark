@@ -1,7 +1,7 @@
 {
   "name": "obsidian-daymark",
-  "version": "0.2.8",
-  "description": "Browse daily notes in week, month, and year calendar views, capture quick thoughts, and summarize journal activity with Tally.",
+  "version": "0.3.0",
+  "description": "Browse daily notes in calendar or Margin views, capture quick thoughts, and summarize journal activity with Tally.",
   "type": "module",
   "private": true,
   "scripts": {

@@ -2,7 +2,7 @@ import obsidianmd from "eslint-plugin-obsidianmd";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["main.js", "node_modules/**"] },
+  { ignores: ["main.js", "node_modules/**", "tests/visual/margin-fixture.js"] },
   ...obsidianmd.configs.recommended,
   {
     files: ["**/*.ts"],
@@ -30,6 +30,13 @@ export default tseslint.config(
     files: ["*.mjs", "scripts/**/*.mjs", "tests/**/*.ts", "benchmarks/**/*.ts", "vitest.config.ts"],
     rules: {
       "obsidianmd/no-nodejs-modules": "off"
+    }
+  },
+  {
+    // Standalone browser fixtures supply Obsidian's DOM and SVG helpers.
+    files: ["tests/visual/margin-entry.ts", "tests/visual/margin-obsidian.ts"],
+    rules: {
+      "obsidianmd/prefer-create-el": "off"
     }
   },
   {

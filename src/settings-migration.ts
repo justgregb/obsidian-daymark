@@ -1,13 +1,17 @@
 import { DEFAULT_SETTINGS, type DaymarkSettings } from "./types";
 import { normalizeTallyMetricLabels, normalizeTallyTagLabels } from "./format";
+import { normalizeCalendarLayout } from "./margin-calendar";
 
-export const CURRENT_SETTINGS_VERSION = 3;
+import { normalizeDayNames } from "./day-names";
 
-type StoredSettings = Omit<Partial<DaymarkSettings>, "tallyMetricLabels" | "tallyTagLabels"> & {
+export const CURRENT_SETTINGS_VERSION = 5;
+
+type StoredSettings = Omit<Partial<DaymarkSettings>, "tallyMetricLabels" | "tallyTagLabels" | "dayNames"> & {
   showSelectedDayStats?: unknown;
   settingsVersion?: unknown;
   tallyMetricLabels?: unknown;
   tallyTagLabels?: unknown;
+  dayNames?: unknown;
 };
 
 export interface SettingsMigrationResult {
@@ -51,6 +55,14 @@ export function migrateStoredSettings(value: unknown): SettingsMigrationResult {
     || originalEntries.length !== Object.keys(labels).length
     || originalEntries.some(([tag, label]) => labels[tag] !== label)) changed = true;
   stored.tallyTagLabels = labels;
+  const dayNames = normalizeDayNames(stored.dayNames);
+  const originalNames = isRecord(stored.dayNames) ? Object.entries(stored.dayNames) : [];
+  if (!isRecord(stored.dayNames) || originalNames.length !== Object.keys(dayNames).length
+    || originalNames.some(([iso, name]) => dayNames[iso] !== name)) changed = true;
+  stored.dayNames = dayNames;
+  const layout = normalizeCalendarLayout(stored.calendarLayout);
+  if (stored.calendarLayout !== layout) changed = true;
+  stored.calendarLayout = layout;
   if (stored.settingsVersion !== CURRENT_SETTINGS_VERSION) {
     stored.settingsVersion = CURRENT_SETTINGS_VERSION;
     changed = true;

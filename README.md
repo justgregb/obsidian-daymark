@@ -1,6 +1,6 @@
 # Daymark
 
-Daymark brings a calm calendar to your daily notes. Browse and open your journal in Week, Month, or Year view, see which days already have notes, and use image covers for a more personal overview.
+Daymark brings a calm calendar to your daily notes. Browse your journal in Week, Month, or Year view with optional image covers, or choose Margin for a continuous timeline with a coiled spine, day names, linked notes, and folded gaps.
 
 Quick Log adds timestamped thoughts to today's note. Tally summarizes writing, photos, checked items, and tagged activities for the selected week, month, or year, and can save those summaries as Markdown reports.
 
@@ -21,6 +21,57 @@ Open Daymark from the ribbon or run **Daymark: Open calendar**.
 Year view brings all twelve months together in a compact activity overview. The selected or open day appears beside its month label, and selecting a month opens it at full size.
 
 ![Daymark Week, Month, and Year calendar views](images/calendar-views.png)
+
+### Margin layout
+
+A new way to browse your journal, inspired by the edge of a notebook.
+
+Margin turns your daily notes into a continuous timeline. Compact dates sit beside a coiled spine that reflects how much you’ve written. Give memorable days a name, start with an emoji to place it on the spine, and open linked notes directly from the sidebar.
+
+Past gaps of three or more days without notes or names fold into small paper stacks. Unfold them whenever you want to revisit a date. Textured shading marks your chosen recurring days, such as weekends, and the Today button brings you back without creating a note.
+
+Tally is close at hand, too: open your monthly summary and select a metric to see its daily values along the timeline. Margin follows your Obsidian theme and works on desktop and mobile.
+
+Enable **Settings → Daymark → Calendar layout → Margin**. Standard remains the default and keeps the Week, Month, and Year views.
+
+![Margin in light and dark themes, with named days, emoji markers, linked notes, and a folded gap](images/daymark-margin.png)
+
+Scroll to browse months; the fixed header follows the middle of the viewport. The Locate button returns to today without opening a note or prompting to create one. Click a date or its spine to open the daily note; missing notes still require confirmation.
+
+#### Names and linked notes
+
+Give a day an optional name without changing its Markdown note. Click the name area or press **F2** on a focused date to edit. **Enter** or leaving the field saves; **Escape** cancels. Start with an emoji, such as **📖 Finished Dune**, to place the first emoji on the spine and the remaining text beside it. Today is the default label for the current day; a custom name replaces it.
+
+Directly linked local Markdown notes appear as smaller, dotted-underlined titles. The first is always visible, beneath a saved name or beside an unnamed date. Click a title to open it; Ctrl/Cmd-click opens a new tab. A count and chevron reveal additional titles without overlapping later days. Hovering a title reveals its full name and folder.
+
+**Days with linked notes use the day’s context menu for naming and renaming.** They have no pencil or direct-click naming action. Right-click the row and choose **Name day**, **Rename day**, or **Clear name**. Shift+F10 and the keyboard menu key open the same menu. Finishing keyboard editing returns focus to the date. Other days retain direct naming and F2.
+
+Names are stored in local plugin settings. Naming or clearing a name never creates, renames, or edits a note. Full emoji sequences remain intact and appear only once while editing.
+
+#### Writing and recurring days
+
+The spine reflects prose in the daily note plus its directly linked local Markdown notes. Short notes stay straight or gently bowed; full coils appear at 120, 200, 320, 480, and 700 words. Each date has a varied wire shape that stays stable while the view is open. A leading name emoji replaces its coil. Hovering the spine shows writing and photo counts; a dotted mark indicates linked writing is loading or unavailable. Extra linked words do not change Tally reports.
+
+**Shade recurring days** adds the spine’s blue-tinted paper grain behind chosen weekdays. Adjacent shaded dates share a continuous pattern. Selection, Today, and editing replace the grain. The interface follows Obsidian’s fonts and theme colors, with compact desktop rows and larger touch targets.
+
+#### Folded gaps
+
+Past runs of **three or more consecutive dates without daily notes or names** fold into a small paper stack. The current two-circle binding and straight, stepped page edges distinguish a gap from writing coils. Click or tap the stack to unfold it; the same control folds it again. Its count and position stay stable, and expansion lasts for the view session.
+
+Existing notes remain visible even when blank or unnamed. Today, future dates, selection, and active name editing also stay visible. Runs stop at month boundaries. Creating a note or naming a day reveals that date and updates the remaining stacks. Folding changes only the timeline.
+
+![Additional linked titles expanded on the left; a three-day gap unfolded on the right](images/daymark-margin-details.png)
+
+The Margin screenshots use fictional demo data.
+
+#### Tally in Margin
+
+With **Show Tally** enabled, the chart button opens a monthly summary. Select a metric or custom tag to show daily bars and values beside the spine. Select the same metric again to return to names. A recorded zero appears as **0**; a day without a matching value stays blank. Each month uses its own scale.
+
+The summary follows the header month and preserves custom display names, **Save**, and the separate all-time additional-writing total. **Daymark: Open Tally** opens this summary in Margin. Switching back to Standard restores its normal calendar and Tally expansion preference.
+
+Margin preserves the visible date through refreshes, folds, and linked-list expansion. It retains nearby months, caches writing shapes and measured row heights, and updates changed dates in place. Today updates after midnight or waking Obsidian. The daily calendar appears before background linked-writing counts finish. See [performance notes](docs/performance.md) for the implementation limits and repeatable checks.
+
 
 Daymark follows your chosen journal folder and date format, including nested paths such as `YYYY/MM/YYYY-MM-DD`. It does not require Obsidian's Daily Notes plugin or another calendar plugin.
 
@@ -46,7 +97,7 @@ If today's note does not exist, Daymark asks before creating it. Quick Log, **Op
 
 ## Tally
 
-Tally unfolds beneath the calendar and follows the same Week, Month, or Year. It summarizes:
+In Standard layout, Tally unfolds beneath the calendar and follows the same Week, Month, or Year. In Margin, it opens as a monthly summary with optional daily lenses. It summarizes:
 
 - Daily notes
 - Words
@@ -110,12 +161,15 @@ npm run lint
 
 After the build succeeds, copy `main.js`, `manifest.json`, and `styles.css` into `<vault>/.obsidian/plugins/daymark/`. Reload Obsidian, then enable Daymark.
 
+For Margin layout QA, run `node scripts/build-margin-fixture.mjs` and serve the repository locally. `tests/visual/daymark-margin.html` renders the production margin component and stylesheet at 200px, 285px, and 320px in light and dark themes.
+
 Public descriptions live in `public-copy.json`. After editing it, run `npm run copy:sync` to update local surfaces and `npm run copy:show` to print the GitHub and Community Directory text. Production builds fail if the local copy has drifted.
 
 ## Privacy and safety
 
 - Daymark works locally through Obsidian's vault APIs.
-- It reads only the configured journal and optional additional writing folder.
+- It reads the configured journal, optional additional writing folder, and directly linked local Markdown notes for Margin writing marks.
+- Optional day names are saved in plugin settings and never change Markdown notes.
 - Calendar navigation never changes an existing note.
 - A missing daily note is created only after confirmation.
 - Quick Log appends only after you select **Add**.
@@ -133,7 +187,7 @@ Daymark is free and open source. If it makes journaling a little nicer, you can 
 
 ## Release status
 
-Version `0.2.8` is available through Obsidian's Community Plugins directory and as a manual GitHub release.
+Version `0.3.0` adds the optional Margin layout. Release downloads are published on the [GitHub releases page](https://github.com/justgregb/obsidian-daymark/releases).
 
 ## License
 

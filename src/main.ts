@@ -12,6 +12,8 @@ import { dailyNotePath, renderDailyNoteTemplate } from "./daily-note";
 import { parseIsoDate, todayPlainDate, toIsoDate } from "./date";
 import { promptForDate } from "./go-to-date-modal";
 import { DaymarkIndex } from "./indexer";
+import { normalizeDayNames, withDayName } from "./day-names";
+import { normalizeCalendarLayout } from "./margin-calendar";
 import { isValidObsidianDateFormat } from "./obsidian-date";
 import { daymarkMoment } from "./obsidian-moment";
 import { legacyTallyToDaymarkState } from "./legacy-tally-state";
@@ -75,10 +77,12 @@ export default class DaymarkPlugin extends Plugin {
   override settings: DaymarkSettings = {
     ...DEFAULT_SETTINGS,
     tallyMetricLabels: {},
-    tallyTagLabels: {}
+    tallyTagLabels: {},
+    dayNames: {}
   };
   index!: DaymarkIndex;
   additionalWordIndex!: AdditionalWordIndex;
+  private settingsWriteChain = Promise.resolve();
   private readonly listeners = new Set<(change: DaymarkChangeSet) => void>();
   private readonly pendingFileOperations = new Map<string, PendingFileOperation>();
   private readonly operationRevisions = new PathOperationRevisions();
@@ -90,6 +94,7 @@ export default class DaymarkPlugin extends Plugin {
   private summaryStates = new WeakMap<SavedSummaryDescriptor, Promise<SavedSummaryState>>();
   private rebuildTimer: number | null = null;
   private additionalWordRebuildTimer: number | null = null;
+  private disposed = false;
 
   get locale(): string {
     return daymarkMoment.locale();
@@ -97,7 +102,8 @@ export default class DaymarkPlugin extends Plugin {
 
   override async onload(): Promise<void> {
     await this.loadSettings();
-    this.index = new DaymarkIndex(this.app, () => this.settings, () => this.locale);
+    if (this.disposed) return;
+    this.index = new DaymarkIndex(this.app, () => this.settings, () => this.locale, dailyDates => this.emitChange({ dailyDates }));
     this.additionalWordIndex = new AdditionalWordIndex(
       this.app,
       () => this.usesAdditionalWordIndex() ? this.settings.additionalWordFolder : "",
@@ -165,6 +171,7 @@ export default class DaymarkPlugin extends Plugin {
     this.addSettingTab(new DaymarkSettingTab(this.app, this));
 
     this.app.workspace.onLayoutReady(() => {
+      if (this.disposed) return;
       this.registerVaultEvents();
       if (!this.settings.tallyEnabled) this.app.workspace.detachLeavesOfType(LEGACY_TALLY_VIEW_TYPE);
       void this.migrateExistingSidebar();
@@ -172,6 +179,9 @@ export default class DaymarkPlugin extends Plugin {
   }
 
   override onunload(): void {
+    this.disposed = true;
+    this.index?.dispose();
+    this.additionalWordIndex?.dispose();
     if (this.syncBatchTimer !== null) window.clearTimeout(this.syncBatchTimer);
     this.pendingFileOperations.clear();
     this.operationRevisions.clear();
@@ -193,13 +203,29 @@ export default class DaymarkPlugin extends Plugin {
     return resolveWeekStartSetting("locale", daymarkMoment.localeData().firstDayOfWeek());
   }
 
-  async updateSettings(change: Partial<DaymarkSettings>): Promise<void> {
+  updateSettings(change: Partial<DaymarkSettings>): Promise<void> {
+    return this.queueSettingsChange(() => change);
+  }
+
+  setDayName(iso: string, name: string): Promise<void> {
+    return this.queueSettingsChange(() => ({ dayNames: withDayName(this.settings.dayNames, iso, name) }), iso);
+  }
+
+  private queueSettingsChange(change: () => Partial<DaymarkSettings>, namedDate?: string): Promise<void> {
+    const write = this.settingsWriteChain.then(() => this.applySettingsChange(change(), namedDate));
+    this.settingsWriteChain = write.catch(() => undefined);
+    return write;
+  }
+
+  private async applySettingsChange(change: Partial<DaymarkSettings>, namedDate?: string): Promise<void> {
     const previous = this.settings;
     const requestedDateFormat = change.dateFormat?.trim();
     const next: DaymarkSettings = {
       ...this.settings,
       ...change,
       settingsVersion: CURRENT_SETTINGS_VERSION,
+      dayNames: change.dayNames === undefined ? this.settings.dayNames : normalizeDayNames(change.dayNames),
+      calendarLayout: normalizeCalendarLayout(change.calendarLayout ?? this.settings.calendarLayout),
       dateFormat: requestedDateFormat === undefined
         ? this.settings.dateFormat
         : isValidObsidianDateFormat(requestedDateFormat) ? requestedDateFormat : this.settings.dateFormat,
@@ -220,10 +246,10 @@ export default class DaymarkPlugin extends Plugin {
         : normalizeTallyTagLabels(change.tallyTagLabels)
     };
     if (settingsAreEqual(previous, next)) return;
+    await this.saveData(next);
     this.settings = next;
     this.summaryDescriptors = new WeakMap();
     this.summaryStates = new WeakMap();
-    await this.saveData(next);
     if (previous.tallyEnabled && !next.tallyEnabled) {
       this.app.workspace.detachLeavesOfType(LEGACY_TALLY_VIEW_TYPE);
       this.additionalWordIndex.reset();
@@ -234,11 +260,16 @@ export default class DaymarkPlugin extends Plugin {
     }
     const rebuildDailyNotes = settingsRequireRebuild(previous, next);
     const rebuildAdditionalWords = settingsRequireAdditionalWordRebuild(previous, next);
+    if (!rebuildDailyNotes && previous.calendarLayout !== next.calendarLayout) {
+      void this.index.rebuildMarginWriting().catch((error: unknown) => {
+        console.error("Daymark could not finish indexing linked writing.", error);
+      });
+    }
     if (rebuildDailyNotes) this.scheduleRebuild();
     if (rebuildAdditionalWords) {
       this.scheduleAdditionalWordRebuild(!previous.tallyEnabled && next.tallyEnabled ? 0 : 400);
     }
-    if (!rebuildDailyNotes && !rebuildAdditionalWords) this.emitChange({ full: true });
+    if (!rebuildDailyNotes && !rebuildAdditionalWords) this.emitChange(namedDate ? { dailyDates: [namedDate] } : { full: true });
   }
 
   async rebuildIndex(): Promise<void> {
@@ -246,6 +277,7 @@ export default class DaymarkPlugin extends Plugin {
     if (this.usesAdditionalWordIndex()) rebuilds.push(this.additionalWordIndex.rebuild());
     await Promise.all(rebuilds);
     this.emitChange({ full: true });
+    await this.index.whenWritingReady();
   }
 
   async ensureCalendarReady(): Promise<void> {
@@ -376,6 +408,7 @@ export default class DaymarkPlugin extends Plugin {
       ),
       journalFolder: normalizeJournalFolder(stored?.journalFolder ?? DEFAULT_SETTINGS.journalFolder),
       templatePath: normalizeTemplatePath(stored?.templatePath ?? DEFAULT_SETTINGS.templatePath),
+      dayNames: normalizeDayNames(stored?.dayNames),
       tallyMetricLabels: normalizeTallyMetricLabels(stored?.tallyMetricLabels),
       tallyTagLabels: normalizeTallyTagLabels(stored?.tallyTagLabels),
       weekStart: normalizeWeekStartSetting(stored?.weekStart)
@@ -389,6 +422,9 @@ export default class DaymarkPlugin extends Plugin {
     this.registerEvent(this.app.vault.on("delete", (file) => this.queueRemoval(file)));
     this.registerEvent(this.app.vault.on("rename", (file, oldPath) => this.queueRename(file, oldPath)));
     this.registerEvent(this.app.metadataCache.on("changed", (file) => this.queueMetadataRefresh(file)));
+    this.registerEvent(this.app.metadataCache.on("resolve", (file) => {
+      if (this.settings.calendarLayout === "margin") this.queueMetadataRefresh(file);
+    }));
   }
 
   private queueRefresh(file: TAbstractFile): void {
@@ -425,9 +461,11 @@ export default class DaymarkPlugin extends Plugin {
     contentChanged: boolean,
     dailyOnly = false
   ): void {
+    if (this.disposed) return;
     const date = this.index.dateForPath(path);
-    const dailyDates = date ? [toIsoDate(date)] : [];
-    const touchesDailyNotes = date !== null || this.index.has(path);
+    const dailyDates = this.index.linkedDatesForPath(path);
+    if (date) dailyDates.push(toIsoDate(date));
+    const touchesDailyNotes = dailyDates.length > 0 || this.index.has(path);
     const touchesAdditionalWords = !dailyOnly && (this.additionalWordIndex.has(path)
       || (this.usesAdditionalWordIndex()
         && pathIsInAdditionalWordFolder(path, this.settings.additionalWordFolder)));
@@ -482,6 +520,7 @@ export default class DaymarkPlugin extends Plugin {
   }
 
   private async processFileBatch(operations: readonly PendingFileOperation[]): Promise<void> {
+    if (this.disposed) return;
     const changes = new DaymarkChangeAccumulator();
     const prioritized = this.prioritizeFileOperations(operations);
     await forEachConcurrent(prioritized, SYNC_REFRESH_CONCURRENCY, async (operation) => {
@@ -491,7 +530,7 @@ export default class DaymarkPlugin extends Plugin {
       const change = operationChanges.take();
       if (change) changes.add(change);
       this.operationRevisions.complete(operation);
-    }, true);
+    }, true, () => !this.disposed);
     const change = changes.take();
     if (change) this.emitChange(change);
   }
@@ -508,15 +547,19 @@ export default class DaymarkPlugin extends Plugin {
     const currentDate = file ? this.index.dateForFile(file) : null;
     if (operation.touchesDailyNotes || currentDate) {
       try {
+        let linkedChanged = false;
+        for (const date of this.index.linkedDatesForPath(operation.path)) operation.dailyDates.add(date);
         if (operation.contentChanged || operation.kind === "remove") {
           if (file) await this.index.refresh(file);
           else this.index.remove(operation.path);
-        }
+        } else if (file) linkedChanged = await this.index.refreshLinks(file);
         if (!this.operationRevisions.isCurrent(operation)) return false;
         if (currentDate) operation.dailyDates.add(toIsoDate(currentDate));
-        changes.add(operation.contentChanged || operation.kind === "remove"
-          ? { dailyDates: operation.dailyDates, dailyPaths: [operation.path] }
-          : { coverDates: operation.dailyDates, dailyPaths: [operation.path] });
+        if (operation.contentChanged || operation.kind === "remove" || linkedChanged) {
+          changes.add({ dailyDates: operation.dailyDates, dailyPaths: [operation.path] });
+        } else if (this.settings.calendarLayout !== "margin") {
+          changes.add({ coverDates: operation.dailyDates, dailyPaths: [operation.path] });
+        }
       } catch (error) {
         console.error(`Daymark could not refresh ${operation.path} in the daily-note index.`, error);
       }
@@ -557,6 +600,7 @@ export default class DaymarkPlugin extends Plugin {
   }
 
   private scheduleRebuild(): void {
+    if (this.disposed) return;
     if (this.rebuildTimer !== null) window.clearTimeout(this.rebuildTimer);
     this.rebuildTimer = window.setTimeout(() => {
       this.rebuildTimer = null;
@@ -567,6 +611,7 @@ export default class DaymarkPlugin extends Plugin {
   }
 
   private scheduleAdditionalWordRebuild(delay = 400): void {
+    if (this.disposed) return;
     if (this.additionalWordRebuildTimer !== null) window.clearTimeout(this.additionalWordRebuildTimer);
     this.additionalWordRebuildTimer = window.setTimeout(() => {
       this.additionalWordRebuildTimer = null;
@@ -577,6 +622,7 @@ export default class DaymarkPlugin extends Plugin {
   }
 
   private emitChange(change: DaymarkChange): void {
+    if (this.disposed) return;
     const accumulator = new DaymarkChangeAccumulator();
     accumulator.add(change);
     const normalized = accumulator.take();

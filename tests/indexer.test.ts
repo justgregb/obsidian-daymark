@@ -1,11 +1,50 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { TFile } from "obsidian";
 import { getPeriodBounds } from "../src/date";
 import { DaymarkIndex } from "../src/indexer";
-import type { DaymarkSettings } from "../src/types";
+import { DEFAULT_SETTINGS, type DaymarkSettings } from "../src/types";
 import { fakeFile, fakeFolder } from "./obsidian-fakes";
 
 describe("daily-note index", () => {
+  it("stops the old journal scan and restarts after a source change", async () => {
+    let settings = { ...DEFAULT_SETTINGS, journalFolder: "Journal", dateFormat: "YYYY-MM-DD" };
+    const oldFiles = Array.from({ length: 20 }, (_, index) => fakeFile(`Journal/2026-09-${String(index + 1).padStart(2, "0")}.md`));
+    const next = fakeFile("Diary/2026-09-25.md");
+    const releases: Array<(content: string) => void> = [];
+    const read = vi.fn((file: TFile) => file === next ? Promise.resolve("Current journal") : new Promise<string>(resolve => releases.push(resolve)));
+    const app = { vault: { getFolderByPath: (path: string) => fakeFolder(path, path === "Journal" ? oldFiles : [next]), cachedRead: read } } as unknown as ConstructorParameters<typeof DaymarkIndex>[0];
+    const index = new DaymarkIndex(app, () => settings, () => "en");
+    const pending = index.rebuild(); settings = { ...settings, journalFolder: "Diary" };
+    releases.forEach(resolve => resolve("Old journal")); await pending;
+    expect(read).toHaveBeenCalledTimes(9);
+    expect(index.has(oldFiles[0].path)).toBe(false);
+    expect(index.recordForDate({ year: 2026, month: 9, day: 25 })?.words).toBe(2);
+  });
+  it("stops queued reads and discards in-flight results when disposed", async () => {
+    const files = Array.from({ length: 20 }, (_, index) => fakeFile(`Journal/2026-09-${String(index + 1).padStart(2, "0")}.md`));
+    const releases: Array<(content: string) => void> = [];
+    const read = vi.fn(() => new Promise<string>(resolve => releases.push(resolve)));
+    const app = { vault: { getFolderByPath: () => fakeFolder("Journal", files), cachedRead: read } } as unknown as ConstructorParameters<typeof DaymarkIndex>[0];
+    const index = new DaymarkIndex(app, () => ({ ...DEFAULT_SETTINGS, journalFolder: "Journal", dateFormat: "YYYY-MM-DD" }), () => "en");
+    const loading = index.ensureReady();
+    expect(read).toHaveBeenCalledTimes(8);
+    index.dispose();
+    releases.forEach(resolve => resolve("These late words must not return"));
+    await loading;
+    await index.ensureReady(); await index.rebuild(); await index.refresh(files[0]);
+    expect(read).toHaveBeenCalledTimes(8);
+    expect(index.isReady).toBe(false);
+    expect(index.recordForDate({ year: 2026, month: 9, day: 1 })).toBeNull();
+  });
+  it("does not resurrect a record from an incremental read after disposal", async () => {
+    const file = fakeFile("Journal/2026-09-25.md");
+    let release!: (content: string) => void;
+    const app = { vault: { cachedRead: () => new Promise<string>(resolve => { release = resolve; }) } } as unknown as ConstructorParameters<typeof DaymarkIndex>[0];
+    const index = new DaymarkIndex(app, () => ({ ...DEFAULT_SETTINGS, journalFolder: "Journal", dateFormat: "YYYY-MM-DD" }), () => "en");
+    const pending = index.refresh(file);
+    index.dispose(); release("Too late"); await pending;
+    expect(index.has(file.path)).toBe(false);
+  });
   it("rebuilds only from Markdown files inside the configured journal folder", async () => {
     const firstPath = "Journal/2026/08/2026-08-10.md";
     const secondPath = "Journal/2026/08/2026-08-12.md";
@@ -30,7 +69,9 @@ describe("daily-note index", () => {
       }
     } as unknown as ConstructorParameters<typeof DaymarkIndex>[0];
     const settings: DaymarkSettings = {
-      settingsVersion: 3,
+      settingsVersion: 4,
+      calendarLayout: "standard",
+      dayNames: {},
       journalFolder: "Journal",
       dateFormat: "YYYY/MM/YYYY-MM-DD",
       templatePath: "",
@@ -72,7 +113,9 @@ describe("daily-note index", () => {
       }
     } as unknown as ConstructorParameters<typeof DaymarkIndex>[0];
     const settings: DaymarkSettings = {
-      settingsVersion: 3,
+      settingsVersion: 4,
+      calendarLayout: "standard",
+      dayNames: {},
       journalFolder: "Journal",
       dateFormat: "YYYY-MM-DD",
       templatePath: "",
@@ -124,7 +167,9 @@ describe("daily-note index", () => {
       }
     } as unknown as ConstructorParameters<typeof DaymarkIndex>[0];
     const settings: DaymarkSettings = {
-      settingsVersion: 3,
+      settingsVersion: 4,
+      calendarLayout: "standard",
+      dayNames: {},
       journalFolder: "Journal",
       dateFormat: "YYYY-MM-DD",
       templatePath: "",

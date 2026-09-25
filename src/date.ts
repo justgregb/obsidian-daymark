@@ -170,10 +170,6 @@ export function formatPeriodTitle(bounds: PeriodBounds, mode: PeriodMode, locale
   return `${month} ${bounds.start.day}–${last.day} ${compactYear}`;
 }
 
-export function formatSourceDate(date: PlainDate, locale?: string): string {
-  return formatDate(date, { month: "short", day: "numeric", year: "numeric" }, locale);
-}
-
 export function formatBreakdownDay(date: PlainDate, locale?: string): string {
   return formatDate(date, { weekday: "short", month: "short", day: "numeric" }, locale);
 }

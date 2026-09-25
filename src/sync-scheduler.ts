@@ -21,6 +21,10 @@ export class PathOperationRevisions {
     if (this.isCurrent(operation)) this.latestByPath.delete(operation.path);
   }
 
+  invalidate(path: string): void {
+    this.latestByPath.delete(path);
+  }
+
   clear(): void {
     this.latestByPath.clear();
   }

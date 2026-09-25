@@ -1,4 +1,4 @@
-import { ItemView, Platform, setIcon, TFile, type ViewStateResult, type WorkspaceLeaf } from "obsidian";
+import { ItemView, Notice, Platform, setIcon, TFile, type ViewStateResult, type WorkspaceLeaf } from "obsidian";
 import {
   calendarGridDates,
   calendarWeekDates,
@@ -38,8 +38,20 @@ import {
   toDate,
   toIsoDate
 } from "./date";
+import { watchDayChange } from "./day-rollover";
 import { InlineTally } from "./inline-tally";
 import { dateTimeFormatter, numberFormatter } from "./intl-cache";
+import { calendarPeriodMode } from "./margin-calendar";
+import { marginTallyLenses, normalizeMarginLens, resolveMarginLens, type MarginTallyLens } from "./margin-tally";
+import { createMarginTally, type MarginTallyControls } from "./margin-tally-view";
+import {
+  captureMarginFocus,
+  createMarginHeader,
+  updateMarginHeader,
+  type MarginCalendarContext,
+  type MarginNameEditor
+} from "./margin-calendar-view";
+import { MarginTimeline, normalizeMarginScroll, type MarginScrollAnchor } from "./margin-timeline";
 import { syncDatePriority } from "./sync-scheduler";
 import type DaymarkPlugin from "./main";
 import type { DailyRecord, PeriodAggregate, PeriodMode, PlainDate, Weekday } from "./types";
@@ -53,6 +65,9 @@ interface CalendarViewState {
   week?: unknown;
   selectedDate?: unknown;
   tallyExpanded?: unknown;
+  marginTallyExpanded?: unknown;
+  marginLens?: unknown;
+  marginScroll?: unknown;
 }
 
 type CalendarViewMode = PeriodMode;
@@ -69,11 +84,23 @@ function nextCalendarViewMode(mode: CalendarViewMode): CalendarViewMode {
 
 export class DaymarkCalendarView extends ItemView {
   private readonly accessibleId = `daymark-calendar-${++calendarViewSequence}`;
-  private mode: CalendarViewMode = "month";
+  private standardMode: CalendarViewMode = "month";
   private displayedMonth = firstOfMonth(todayPlainDate());
   private displayedWeek = todayPlainDate();
   private selectedDate = todayPlainDate();
-  private tallyExpanded = !Platform.isMobile;
+  private standardTallyExpanded = !Platform.isMobile;
+  private marginTallyExpanded = false;
+  private marginLensId: string | null = null;
+  private marginTimeline: MarginTimeline | null = null;
+  private readonly marginWireSeed = Math.floor(Math.random() * 0x100000000);
+  private readonly marginExpandedLinks = new Set<string>();
+  private readonly marginExpandedFolds = new Set<string>();
+  private readonly marginLenses = new Map<string, MarginTallyLens | null>();
+  private marginScroll: MarginScrollAnchor | null = null;
+  private marginTallySlot: HTMLElement | null = null;
+  private disposeMarginTally: ReturnType<typeof createMarginTally> | null = null;
+  private disposeDayWatch: (() => void) | null = null;
+  private readonly marginNameEditor: MarginNameEditor = { draft: null };
   private unsubscribe: (() => void) | null = null;
   private opened = false;
   private dayCellSequence = 0;
@@ -104,6 +131,27 @@ export class DaymarkCalendarView extends ItemView {
     this.inlineTally = new InlineTally(plugin, () => this.renderFooterOnly());
   }
 
+  private get isMargin(): boolean {
+    return this.plugin.settings.calendarLayout === "margin";
+  }
+
+  private get mode(): CalendarViewMode {
+    return calendarPeriodMode(this.standardMode, this.plugin.settings.calendarLayout);
+  }
+
+  private set mode(value: CalendarViewMode) {
+    this.standardMode = value;
+  }
+
+  private get tallyExpanded(): boolean {
+    return this.isMargin ? this.marginTallyExpanded : this.standardTallyExpanded;
+  }
+
+  private set tallyExpanded(value: boolean) {
+    if (this.isMargin) this.marginTallyExpanded = value;
+    else this.standardTallyExpanded = value;
+  }
+
   getViewType(): string {
     return DAYMARK_CALENDAR_VIEW_TYPE;
   }
@@ -118,11 +166,14 @@ export class DaymarkCalendarView extends ItemView {
 
   override getState(): Record<string, unknown> {
     return {
-      mode: this.mode,
+      mode: this.standardMode,
       month: toIsoDate(this.displayedMonth),
       week: toIsoDate(this.displayedWeek),
       selectedDate: toIsoDate(this.selectedDate),
-      tallyExpanded: this.tallyExpanded
+      tallyExpanded: this.standardTallyExpanded,
+      marginTallyExpanded: this.marginTallyExpanded,
+      marginLens: this.marginLensId,
+      marginScroll: this.marginTimeline?.snapshot() ?? this.marginScroll
     };
   }
 
@@ -142,7 +193,14 @@ export class DaymarkCalendarView extends ItemView {
     } else {
       this.displayedWeek = this.selectedDate;
     }
-    if (typeof state.tallyExpanded === "boolean") this.tallyExpanded = state.tallyExpanded;
+    if (typeof state.tallyExpanded === "boolean") this.standardTallyExpanded = state.tallyExpanded;
+    if (typeof state.marginTallyExpanded === "boolean") this.marginTallyExpanded = state.marginTallyExpanded;
+    if (state.marginLens !== undefined) this.marginLensId = normalizeMarginLens(state.marginLens);
+    if (state.marginScroll !== undefined) {
+      this.marginTimeline?.dispose();
+      this.marginTimeline = null;
+      this.marginScroll = normalizeMarginScroll(state.marginScroll);
+    }
     await super.setState(state, result);
     if (this.opened) this.render();
   }
@@ -170,14 +228,28 @@ export class DaymarkCalendarView extends ItemView {
     this.renderLoading();
     try {
       await this.plugin.ensureCalendarReady();
+      if (!this.opened) return;
       this.syncToFile(this.app.workspace.getActiveFile(), false);
       this.render();
+      this.disposeDayWatch = watchDayChange(this.contentEl.ownerDocument.defaultView!, (previous, current) => {
+        this.prepareRenderContext();
+        if (this.marginTimeline) this.marginTimeline.refreshDates([previous, current], false);
+        else this.render();
+      });
     } catch (error) {
-      this.renderError(error);
+      if (this.opened) this.renderError(error);
     }
   }
 
   override async onClose(): Promise<void> {
+    this.disposeDayWatch?.();
+    this.disposeDayWatch = null;
+    this.disposeMarginTally?.();
+    this.disposeMarginTally = null;
+    this.marginScroll = this.marginTimeline?.snapshot() ?? this.marginScroll;
+    this.marginTimeline?.dispose();
+    this.marginTimeline = null;
+    this.marginLenses.clear();
     this.opened = false;
     this.cancelScheduledRender();
     this.flushViewState();
@@ -222,25 +294,155 @@ export class DaymarkCalendarView extends ItemView {
     const weekStart = this.plugin.resolveWeekStart();
     const anchor = this.mode === "week" ? this.displayedWeek : this.displayedMonth;
     const bounds = getPeriodBounds(anchor, this.mode, weekStart);
-    const aggregate = this.plugin.index.aggregate(bounds);
+    const aggregate = this.isMargin ? null : this.plugin.index.aggregate(bounds);
     const root = this.contentEl;
+    const restoreMarginFocus = captureMarginFocus(root);
     this.dayCellSequence = 0;
     this.footerEl = null;
+    this.marginScroll = this.marginTimeline?.snapshot() ?? this.marginScroll;
+    this.marginTimeline?.dispose();
+    this.marginTimeline = null;
     root.empty();
     root.addClass("daymark-calendar-view");
+    root.toggleClass("is-margin-view", this.isMargin);
     root.toggleClass("is-week-view", this.mode === "week");
     root.toggleClass("is-month-view", this.mode === "month");
     root.toggleClass("is-year-view", this.mode === "year");
-    root.toggleClass("is-tally-expanded", this.plugin.settings.tallyEnabled && this.tallyExpanded);
-    root.toggleClass("has-footer", this.plugin.settings.showCalendarTotals || this.plugin.settings.tallyEnabled);
+    root.toggleClass("is-tally-expanded", !this.isMargin && this.plugin.settings.tallyEnabled && this.tallyExpanded);
+    root.toggleClass("has-footer", !this.isMargin
+      && (this.plugin.settings.showCalendarTotals || this.plugin.settings.tallyEnabled));
 
-    this.createHeader(root, bounds);
+    this.disposeMarginTally?.();
+    this.disposeMarginTally = null;
+    this.marginTallySlot = this.isMargin ? createMarginHeader(root, this.displayedMonth, this.plugin.locale, this.marginNavigation()) : null;
+    if (!this.isMargin) this.createHeader(root, bounds);
     const body = root.createDiv("daymark-calendar-body");
     this.bodyEl = body;
-    if (this.mode === "year") this.createYearView(body, weekStart, aggregate);
+    if (this.isMargin) {
+      this.refreshMarginHeader();
+      this.createMarginView(body);
+    }
+    else if (this.mode === "year") this.createYearView(body, weekStart, aggregate!);
     else if (this.mode === "month") this.createMonthView(body, weekStart);
     else this.createWeekView(body, weekStart);
-    this.createFooter(root, aggregate, renderVersion);
+    if (aggregate) this.createFooter(root, aggregate, renderVersion);
+    restoreMarginFocus();
+  }
+
+  private marginContext(lens: MarginTallyLens | null): MarginCalendarContext {
+    return {
+      locale: this.plugin.locale,
+      settings: this.plugin.settings,
+      selectedIso: this.renderSelectedIso,
+      todayIso: this.renderTodayIso,
+      onSelect: (date) => this.selectDate(date, true),
+      nameEditor: this.marginNameEditor,
+      wireSeed: this.marginWireSeed,
+      expandedLinks: this.marginExpandedLinks,
+      onOpenLinkedNote: async (path, newLeaf) => {
+        const file = this.app.vault.getAbstractFileByPath(path);
+        if (!(file instanceof TFile) || file.extension.toLowerCase() !== "md") {
+          new Notice("This linked note is no longer available.");
+          return;
+        }
+        await this.app.workspace.getLeaf(newLeaf ? "tab" : false).openFile(file);
+      },
+      onNameChange: (iso, name) => this.plugin.setDayName(iso, name),
+      lens
+    };
+  }
+
+  private refreshMarginHeader(): void {
+    const restoreFocus = captureMarginFocus(this.contentEl);
+    updateMarginHeader(this.contentEl, this.displayedMonth, this.plugin.locale);
+    const slot = this.marginTallySlot;
+    if (!slot) return;
+    if (!this.plugin.settings.tallyEnabled) {
+      this.disposeMarginTally?.();
+      this.disposeMarginTally = null;
+      slot.empty();
+      return;
+    }
+    const bounds = this.currentBounds();
+    const aggregate = () => this.plugin.index.aggregate(bounds);
+    const lenses = (id?: string) => marginTallyLenses(aggregate(), this.plugin.settings, this.plugin.locale, id);
+    const lens = this.marginLensId
+      ? resolveMarginLens(this.marginLensId, lenses(this.marginLensId), this.plugin.settings, this.plugin.locale) : null;
+    const renderVersion = this.renderVersion;
+    const controls: MarginTallyControls = {
+      locale: this.plugin.locale, period: formatPeriodTitle(bounds, "month", this.plugin.locale),
+      lenses, lens, expanded: this.marginTallyExpanded,
+      onExpanded: expanded => {
+        this.marginTallyExpanded = expanded;
+        this.saveViewState();
+        if (expanded) void this.plugin.ensureAdditionalWordsReady();
+      },
+      onLens: id => {
+        this.marginLensId = id;
+        this.marginTallyExpanded = false;
+        this.saveViewState();
+        this.render();
+        this.contentEl.querySelector<HTMLElement>(".daymark-margin-tally-toggle")?.focus({ preventScroll: true });
+      },
+      reportAction: parent => this.inlineTally.createReportAction(parent, "month", aggregate(), renderVersion,
+        version => this.opened && version === this.renderVersion),
+      additionalWords: parent => this.inlineTally.createAdditionalWords(parent)
+    };
+    if (this.disposeMarginTally) this.disposeMarginTally.update(controls);
+    else this.disposeMarginTally = createMarginTally(slot, controls);
+    if (this.marginTallyExpanded) void this.plugin.ensureAdditionalWordsReady();
+    restoreFocus();
+  }
+
+  private createMarginView(body: HTMLElement): void {
+    const revealSelected = !this.marginScroll && this.dateIsInDisplayedMonth(this.selectedDate);
+    const lenses = this.marginLenses;
+    lenses.clear();
+    this.marginTimeline = new MarginTimeline(body, {
+      anchor: this.marginScroll ?? { date: toIsoDate(this.displayedMonth), fraction: 0 },
+      expandedFoldDates: this.marginExpandedFolds,
+      recordForDate: date => this.plugin.index.recordForDate(date),
+      contextForMonth: month => {
+        const key = toIsoDate(month);
+        if (!lenses.has(key)) {
+          const options = this.plugin.settings.tallyEnabled && this.marginLensId
+            ? marginTallyLenses(this.plugin.index.aggregate(getPeriodBounds(month, "month", this.plugin.resolveWeekStart())),
+              this.plugin.settings, this.plugin.locale, this.marginLensId) : [];
+          lenses.set(key, this.plugin.settings.tallyEnabled
+            ? resolveMarginLens(this.marginLensId, options, this.plugin.settings, this.plugin.locale) : null);
+          // Scrolling through years must not retain every month's derived values.
+          if (lenses.size > 12) lenses.delete(lenses.keys().next().value!);
+        }
+        return this.marginContext(lenses.get(key) ?? null);
+      },
+      onScroll: (anchor, focusDate) => {
+        this.marginScroll = anchor;
+        const month = firstOfMonth(focusDate);
+        if (!datesEqual(month, this.displayedMonth)) {
+          this.displayedMonth = month;
+          ++this.renderVersion;
+          this.refreshMarginHeader();
+        }
+        this.saveViewState();
+      }
+    });
+    if (revealSelected) this.marginTimeline.scrollToDate(this.selectedDate);
+  }
+
+  private marginNavigation() {
+    return {
+      onToday: () => this.selectDate(todayPlainDate(), false, "center")
+    };
+  }
+
+  private selectMarginDate(date: PlainDate, align: "nearest" | "center" = "nearest"): void {
+    const previousIso = toIsoDate(this.selectedDate);
+    this.selectedDate = date;
+    this.displayedWeek = date;
+    this.renderSelectedIso = toIsoDate(date);
+    this.marginTimeline?.scrollToDate(date, align);
+    this.updateVisibleSelection(previousIso, this.renderSelectedIso);
+    this.saveViewState();
   }
 
   private createHeader(parent: HTMLElement, bounds: ReturnType<typeof getPeriodBounds>): void {
@@ -602,6 +804,7 @@ export class DaymarkCalendarView extends ItemView {
 
   private createFooter(parent: HTMLElement, aggregate: PeriodAggregate, renderVersion: number): void {
     this.footerEl = null;
+    if (this.isMargin) return;
     if (!this.plugin.settings.showCalendarTotals && !this.plugin.settings.tallyEnabled) return;
 
     const footer = parent.createDiv("daymark-calendar-footer");
@@ -662,6 +865,7 @@ export class DaymarkCalendarView extends ItemView {
 
   private renderFooterOnly(): void {
     if (!this.opened) return;
+    if (this.isMargin) { ++this.renderVersion; this.refreshMarginHeader(); return; }
     const weekStart = this.plugin.resolveWeekStart();
     const anchor = this.mode === "week" ? this.displayedWeek : this.displayedMonth;
     const bounds = getPeriodBounds(anchor, this.mode, weekStart);
@@ -671,6 +875,7 @@ export class DaymarkCalendarView extends ItemView {
       "is-tally-expanded",
       this.plugin.settings.tallyEnabled && this.tallyExpanded
     );
+    this.contentEl.toggleClass("has-footer", this.plugin.settings.showCalendarTotals || this.plugin.settings.tallyEnabled);
     this.footerEl?.remove();
     this.footerEl = null;
     this.createFooter(this.contentEl, aggregate, renderVersion);
@@ -682,6 +887,7 @@ export class DaymarkCalendarView extends ItemView {
 
   private renderBodyOnly(): void {
     if (!this.opened || !this.bodyEl) return;
+    if (this.isMargin) { this.render(); return; }
     this.prepareCoverWorkForRender();
     this.prepareRenderContext();
     const weekStart = this.plugin.resolveWeekStart();
@@ -749,6 +955,8 @@ export class DaymarkCalendarView extends ItemView {
 
   private patchVisibleDates(dates: readonly string[], bounds: ReturnType<typeof getPeriodBounds>): void {
     if (!this.bodyEl) return;
+    // Margin's dedicated incremental path handles ordinary date updates.
+    if (this.isMargin) { this.render(); return; }
     let missedDateInPeriod = false;
     const start = toIsoDate(bounds.start);
     const end = toIsoDate(bounds.end);
@@ -869,6 +1077,7 @@ export class DaymarkCalendarView extends ItemView {
     this.displayedMonth = firstOfMonth(anchor);
     this.displayedWeek = anchor;
     this.tallyExpanded = true;
+    if (this.isMargin) this.marginTimeline?.scrollToDate(firstOfMonth(anchor), "center");
     this.saveViewState();
     this.render();
   }
@@ -878,12 +1087,14 @@ export class DaymarkCalendarView extends ItemView {
     this.tallyExpanded = true;
     this.saveViewState();
     this.renderFooterOnly();
+    if (this.isMargin) this.contentEl.querySelector<HTMLElement>(".daymark-margin-tally-item")?.focus({ preventScroll: true });
   }
 
   async saveCurrentTallyPeriod(): Promise<void> {
     const today = todayPlainDate();
     this.displayedMonth = firstOfMonth(today);
     this.displayedWeek = today;
+    if (this.isMargin) this.marginTimeline?.scrollToDate(firstOfMonth(today), "center");
     this.tallyExpanded = true;
     this.saveViewState();
     await this.plugin.ensureCalendarReady();
@@ -898,6 +1109,18 @@ export class DaymarkCalendarView extends ItemView {
     if (!file) return;
     const date = this.plugin.index.dateForFile(file);
     if (!date) return;
+    if (this.isMargin) {
+      if (shouldRender && this.marginTimeline) {
+        // File-open after a date click must not scroll that date a second time.
+        if (!datesEqual(this.selectedDate, date)) this.selectMarginDate(date);
+        return;
+      }
+      if (!shouldRender && this.marginScroll) {
+        this.selectedDate = date;
+        this.displayedWeek = date;
+        return;
+      }
+    }
     const displayedMonth = firstOfMonth(date);
     if (datesEqual(this.selectedDate, date)
       && datesEqual(this.displayedMonth, displayedMonth)
@@ -912,7 +1135,12 @@ export class DaymarkCalendarView extends ItemView {
     else this.updateVisibleSelection(previousIso, toIsoDate(date));
   }
 
-  private selectDate(date: PlainDate, openNote: boolean): void {
+  private selectDate(date: PlainDate, openNote: boolean, marginAlign: "nearest" | "center" = "nearest"): void {
+    if (this.isMargin && this.marginTimeline) {
+      this.selectMarginDate(date, marginAlign);
+      if (openNote) void this.plugin.openOrCreateDailyNote(date);
+      return;
+    }
     const previousIso = toIsoDate(this.selectedDate);
     const staysInPeriod = this.dateStaysInVisiblePeriod(date);
     this.applyViewportState(selectCalendarDate(date));
@@ -936,12 +1164,14 @@ export class DaymarkCalendarView extends ItemView {
     const selected = this.bodyEl.querySelector<HTMLElement>(`[data-date="${selectedIso}"]`);
     previous?.removeClass("is-selected");
     selected?.addClass("is-selected");
-    if (this.mode === "month") {
+    if (this.mode === "month" && !this.isMargin) {
       previous?.setAttr("aria-selected", "false");
       selected?.setAttr("aria-selected", "true");
     } else {
-      previous?.setAttr("aria-pressed", "false");
-      selected?.setAttr("aria-pressed", "true");
+      const previousButton = this.isMargin ? previous?.querySelector(".daymark-margin-date") : previous;
+      const selectedButton = this.isMargin ? selected?.querySelector(".daymark-margin-date") : selected;
+      previousButton?.setAttr("aria-pressed", "false");
+      selectedButton?.setAttr("aria-pressed", "true");
     }
   }
 
@@ -969,6 +1199,21 @@ export class DaymarkCalendarView extends ItemView {
     const visibleDates = coverDates.length === 0
       ? change.dailyDates
       : [...new Set([...change.dailyDates, ...coverDates])];
+    if (this.isMargin) {
+      // Invalidate only affected months; report/additional-word updates leave lenses intact.
+      for (const iso of visibleDates) this.marginLenses.delete(`${iso.slice(0, 7)}-01`);
+      if (!this.marginTimeline) { this.render(); return; }
+      const restoreFocus = captureMarginFocus(this.contentEl);
+      const previousToday = this.renderTodayIso;
+      this.prepareRenderContext();
+      // Update affected dates; lens scales also refresh their months.
+      const dates = previousToday && previousToday !== this.renderTodayIso
+        ? [...visibleDates, previousToday, this.renderTodayIso] : visibleDates;
+      this.marginTimeline.refreshDates(dates, this.plugin.settings.tallyEnabled && this.marginLensId !== null);
+      if (affectsPeriod || (this.tallyExpanded && (change.additionalWords || change.reportPaths.length > 0))) this.renderFooterOnly();
+      restoreFocus();
+      return;
+    }
     if (change.dailyDates.length > 0 || (this.mode !== "year" && visibleDates.length > 0)) {
       this.prepareRenderContext();
       if (this.mode === "year") {

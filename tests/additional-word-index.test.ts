@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { TFile } from "obsidian";
 import {
   AdditionalWordIndex,
@@ -8,6 +8,47 @@ import {
 import { fakeFile, fakeFolder } from "./obsidian-fakes";
 
 describe("additional word-count folder", () => {
+  it("discards an incremental read after a reset or folder change", async () => {
+    const file = fakeFile("Drafts/Story.md");
+    let folder = "Drafts";
+    let release!: (content: string) => void;
+    const app = { vault: { cachedRead: () => new Promise<string>(resolve => { release = resolve; }) } } as unknown as ConstructorParameters<typeof AdditionalWordIndex>[0];
+    const index = new AdditionalWordIndex(app, () => folder, () => "en");
+    const pending = index.refresh(file);
+    index.reset(); folder = "Other";
+    release("Stale words"); await pending;
+    expect(index.totalWords).toBe(0);
+    expect(index.has(file.path)).toBe(false);
+  });
+  it("stops queued reads and makes future work inert after disposal", async () => {
+    const files = Array.from({ length: 20 }, (_, index) => fakeFile(`Drafts/${index}.md`));
+    const releases: Array<(content: string) => void> = [];
+    const read = vi.fn(() => new Promise<string>(resolve => releases.push(resolve)));
+    const app = { vault: { getFolderByPath: () => fakeFolder("Drafts", files), cachedRead: read } } as unknown as ConstructorParameters<typeof AdditionalWordIndex>[0];
+    const index = new AdditionalWordIndex(app, () => "Drafts", () => "en");
+    const pending = index.ensureReady();
+    expect(read).toHaveBeenCalledTimes(8);
+    index.dispose(); releases.forEach(resolve => resolve("Late result")); await pending;
+    await index.ensureReady(); await index.rebuild(); await index.refresh(files[0]);
+    expect(read).toHaveBeenCalledTimes(8);
+    expect(index.totalWords).toBe(0);
+    expect(index.isReady).toBe(false);
+  });
+  it("restarts with the new folder instead of finishing a stale folder scan", async () => {
+    let folder = "Drafts";
+    const oldFiles = Array.from({ length: 20 }, (_, index) => fakeFile(`Drafts/${index}.md`));
+    const next = fakeFile("Other/New.md");
+    const releases: Array<(content: string) => void> = [];
+    const read = vi.fn((file: TFile) => file === next ? Promise.resolve("New folder words") : new Promise<string>(resolve => releases.push(resolve)));
+    const app = { vault: { getFolderByPath: (path: string) => fakeFolder(path, path === "Drafts" ? oldFiles : [next]), cachedRead: read } } as unknown as ConstructorParameters<typeof AdditionalWordIndex>[0];
+    const index = new AdditionalWordIndex(app, () => folder, () => "en");
+    const pending = index.rebuild(); folder = "Other";
+    releases.forEach(resolve => resolve("Old words")); await pending;
+    expect(read).toHaveBeenCalledTimes(9);
+    expect(index.totalWords).toBe(3);
+    expect(index.has(oldFiles[0].path)).toBe(false);
+    expect(index.has(next.path)).toBe(true);
+  });
   it("matches Markdown files recursively without leaking across folder boundaries", () => {
     expect(pathIsInAdditionalWordFolder("Desk/Longform/Novel.md", "Desk/Longform")).toBe(true);
     expect(pathIsInAdditionalWordFolder("Desk/Longform/Act 1/Scene.md", "Desk/Longform/")).toBe(true);

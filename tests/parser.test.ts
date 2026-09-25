@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { countMarkdownPhotos, countMarkdownProseWords, countWords, parseDailyNote } from "../src/parser";
+import { countMarkdownProseWords, countWords, parseDailyNote } from "../src/parser";
 
 const date = { year: 2026, month: 8, day: 12 };
 
@@ -102,7 +102,6 @@ describe("journal photos", () => {
     ].join("\n");
     const record = parseDailyNote("Journal/2026-08-12.md", "2026-08-12", date, content);
     expect(record.photos).toBe(3);
-    expect(countMarkdownPhotos(content)).toBe(3);
   });
 });
 

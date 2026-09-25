@@ -11,6 +11,7 @@ import type { PeriodAggregate, PeriodMode } from "./types";
 
 export class InlineTally {
   private actionPending = false;
+  private readonly reportActions = new WeakMap<HTMLElement, (mode: PeriodMode, aggregate: PeriodAggregate, version: number, current: (version: number) => boolean) => void>();
   private formatterLocale: string | null = null;
   private numberFormatter!: Intl.NumberFormat;
 
@@ -51,24 +52,22 @@ export class InlineTally {
       }
     }
 
+    this.createAdditionalWords(parent);
+  }
+
+  createAdditionalWords(parent: HTMLElement): void {
     const folder = this.plugin.settings.additionalWordFolder;
-    if (folder.length === 0) return;
-    if (!this.plugin.additionalWordIndex.isReady) {
-      this.createMetric(
-        parent,
-        `${additionalWordFolderLabel(folder)} · All time`,
-        "Loading…",
-        "daymark-tally-additional-source"
-      );
-      return;
-    }
+    const existing = parent.querySelector<HTMLElement>(".daymark-tally-additional-source");
+    if (folder.length === 0) { existing?.remove(); return; }
+    const label = `${additionalWordFolderLabel(folder)} · All time`;
     const words = this.plugin.additionalWordIndex.totalWords;
-    this.createMetric(
-      parent,
-      `${additionalWordFolderLabel(folder)} · All time`,
-      `${this.formatNumber(words)} ${words === 1 ? "word" : "words"}`,
-      "daymark-tally-additional-source"
-    );
+    const value = this.plugin.additionalWordIndex.isReady ? `${this.formatNumber(words)} ${words === 1 ? "word" : "words"}` : "Loading…";
+    if (existing) {
+      const labelEl = existing.querySelector<HTMLElement>(".daymark-tally-metric-label")!;
+      const valueEl = existing.querySelector<HTMLElement>(".daymark-tally-metric-value")!;
+      if (labelEl.textContent !== label) labelEl.setText(label);
+      if (valueEl.textContent !== value) valueEl.setText(value);
+    } else this.createMetric(parent, label, value, "daymark-tally-additional-source");
   }
 
   createReportAction(
@@ -78,22 +77,31 @@ export class InlineTally {
     renderVersion: number,
     isCurrentRender: (version: number) => boolean
   ): void {
+    const existing = this.reportActions.get(parent);
+    if (existing) { existing(mode, aggregate, renderVersion, isCurrentRender); return; }
     const button = parent.createEl("button", { cls: "daymark-tally-report-action" });
     button.setAttr("type", "button");
     const icon = button.createSpan("daymark-tally-report-icon");
     const label = button.createSpan("daymark-tally-report-label");
-    this.applyPresentation(button, icon, label, aggregate.noteCount, "save");
-    button.addEventListener("click", () => {
-      void this.performAction(button, mode, aggregate);
-    });
-
-    if (aggregate.noteCount === 0) return;
-    void this.plugin.summaryState(mode, aggregate).then((state) => {
-      if (!isCurrentRender(renderVersion) || !button.isConnected) return;
-      this.applyPresentation(button, icon, label, aggregate.noteCount, state);
-    }).catch((error: unknown) => {
-      console.error("Daymark could not determine the saved Tally report state.", error);
-    });
+    let latestMode = mode;
+    let latestAggregate = aggregate;
+    let request = 0;
+    button.addEventListener("click", () => { void this.performAction(button, latestMode, latestAggregate); });
+    const update = (nextMode: PeriodMode, next: PeriodAggregate, version: number, current: (version: number) => boolean): void => {
+      latestMode = nextMode;
+      latestAggregate = next;
+      const token = ++request;
+      this.applyPresentation(button, icon, label, next.noteCount, "save");
+      if (next.noteCount === 0) return;
+      void this.plugin.summaryState(nextMode, next).then(state => {
+        if (token !== request || !current(version) || !button.isConnected) return;
+        this.applyPresentation(button, icon, label, next.noteCount, state);
+      }).catch((error: unknown) => {
+        console.error("Daymark could not determine the saved Tally report state.", error);
+      });
+    };
+    this.reportActions.set(parent, update);
+    update(mode, aggregate, renderVersion, isCurrentRender);
   }
 
   async savePeriod(mode: PeriodMode, aggregate: PeriodAggregate): Promise<void> {

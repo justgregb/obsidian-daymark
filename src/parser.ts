@@ -101,10 +101,6 @@ function countPhotosInContentLines(lines: readonly string[]): number {
   return photos;
 }
 
-export function countMarkdownPhotos(content: string): number {
-  return countPhotosInContentLines(markdownContentLines(content));
-}
-
 function markdownToVisibleProse(value: string): string {
   return value
     .replace(/<!--[\s\S]*?-->/gu, " ")

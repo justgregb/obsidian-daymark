@@ -26,6 +26,20 @@ function immediateOptions(
 }
 
 describe("cover thumbnail cache", () => {
+  it("bounds path bookkeeping across cache misses, eviction, and failed images", async () => {
+    const cache = new CoverThumbnailCache({ ...immediateOptions(async source => source.size ? `blob:${source.path}` : null), maxEntries: 4 });
+    const paths = (cache as unknown as { latestFingerprintByPath: Map<string, string> }).latestFingerprintByPath;
+    for (let index = 0; index < 200; index++) {
+      const source = { ...first, path: `Photos/${index}.jpg` };
+      cache.get(source);
+      await cache.request(source);
+      await cache.request({ ...source, path: `Photos/failed-${index}.jpg`, size: 0 });
+      expect(paths.size).toBeLessThanOrEqual(4);
+    }
+    expect(cache.get({ ...first, path: "Photos/199.jpg" })).toBe("blob:Photos/199.jpg");
+    cache.dispose();
+    expect(paths.size).toBe(0);
+  });
   it("deduplicates simultaneous requests and reuses the stable cached URL", async () => {
     let generated = 0;
     const cache = new CoverThumbnailCache(immediateOptions(async () => {

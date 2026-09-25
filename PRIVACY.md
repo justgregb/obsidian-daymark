@@ -8,4 +8,10 @@ When **Show note covers** is enabled, Daymark reads the first embedded local ima
 
 When the user explicitly selects Save in Tally, Daymark creates or updates one structured `Tally — <period>.md` report in the narrowest common folder containing that period's daily notes. It refuses to overwrite a same-named file that it does not recognize as generated output. Open only reopens the matching generated report and does not change it.
 
-Calculated records and totals remain in memory and are discarded when the plugin unloads. Only settings—including the journal folder, optional additional word-count folder, filename date format, optional template path, and calendar preferences—are persisted through Obsidian's plugin data API.
+While Margin layout is active, Daymark also reads local Markdown notes directly linked by dated daily notes to calculate writing-volume marks. It uses Obsidian's resolved links, reads each shared target through an in-memory cache, and updates affected dates when linked notes change. It does not follow links recursively or request external URLs. No linked note is modified, and these extra word counts are not added to Tally reports.
+
+Calculated records, linked-word counts, and totals remain in memory and are discarded when the plugin unloads. Optional day names are user-authored labels keyed by calendar date. They are saved in local plugin data; naming a day never creates, renames, or edits a note.
+
+Only settings—including the journal folder, optional additional word-count folder, filename date format, optional template path, and calendar preferences and day names—are persisted through Obsidian's plugin data API.
+
+The active Margin Tally lens and summary-open preference are saved with the calendar's local Obsidian workspace view state. Summary and lens values use the existing in-memory Tally index, do not change parsing scope, and never write notes or reports. A report is still written only through Save.

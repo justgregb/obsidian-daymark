@@ -1,0 +1,583 @@
+.daymark-calendar-container .view-content.daymark-calendar-view.is-margin-view {
+  --daymark-date-block-height: calc(var(--font-ui-medium) * 1.15 + var(--font-ui-small) * 1.15 + 4px);
+  --daymark-row-min: max(38px, var(--daymark-date-block-height));
+  --daymark-margin-header-height: 40px;
+  --daymark-header-control-width: 32px;
+  --daymark-spine-offset: 12.5px;
+  --daymark-emoji-gap: calc(var(--font-ui-small) / 2 + 2px);
+  --daymark-spine-color: var(--background-modifier-border);
+  --daymark-mark-color: color-mix(in srgb, var(--text-muted) 65%, var(--interactive-accent));
+  --daymark-row-radius: min(6px, var(--nav-item-radius, var(--radius-s)));
+  --daymark-row-inset: 2px;
+  padding: 0 0 max(var(--safe-area-inset-bottom, 0px), var(--size-4-8, 32px));
+  min-height: 0;
+  overflow-y: hidden;
+  scrollbar-gutter: auto;
+  font-family: var(--font-interface);
+  position: relative;
+}
+
+.daymark-margin-header {
+  align-items: center;
+  box-sizing: border-box;
+  display: flex;
+  flex: 0 0 var(--daymark-margin-header-height);
+  gap: 8px;
+  padding: 0 8px;
+}
+.daymark-margin-actions { display: flex; align-items: center; flex: 0 0 auto; gap: 4px; }
+.daymark-margin-month { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.daymark-margin-year { flex: 0 0 auto; font-variant-numeric: tabular-nums; }
+.daymark-margin-month-short { display: none; }
+
+.daymark-calendar-view :is(.daymark-margin-today, .daymark-margin-date, .daymark-margin-name) {
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-s);
+  box-shadow: none;
+  color: var(--text-normal);
+  font-family: var(--font-interface);
+  font-weight: var(--font-normal);
+  margin: 0;
+  padding: 0;
+}
+.daymark-margin-header-chip {
+  box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center;
+  height: max(24px, 1.7em); min-width: max(24px, 1.7em); padding: 0 6px;
+  background: var(--background-secondary); border-radius: var(--daymark-row-radius); corner-shape: var(--corner-shape, round); line-height: 1; white-space: nowrap;
+}
+.daymark-margin-header-chip svg { height: 1em; width: 1em; }
+.daymark-calendar-view .daymark-margin-period {
+  align-items: center;
+  display: flex;
+  flex: 1 1 0;
+  font-size: var(--font-ui-large);
+  font-weight: var(--font-normal);
+  gap: 7px;
+  height: 32px;
+  justify-content: flex-start;
+  line-height: 1.2;
+  min-width: 0;
+  white-space: nowrap;
+}
+.daymark-margin-tally-slot { display: flex; align-items: center; flex: 0 0 var(--daymark-header-control-width); }
+.daymark-margin-tally-slot:empty { display: none; }
+
+.daymark-calendar-view.is-margin-view .daymark-calendar-body {
+  display: grid; flex: 1 1 0; min-height: 0; overflow: visible;
+  grid-template-columns: minmax(44px, max-content) 26px minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+}
+.daymark-calendar-view.is-margin-view .daymark-calendar-body::before { display: none; }
+.daymark-margin-section, .daymark-margin-scroll {
+  display: grid; grid-column: 1 / -1; grid-template-columns: subgrid;
+  grid-template-rows: minmax(0, 1fr); min-height: 0; min-width: 0;
+}
+.daymark-margin-scroll { position: relative; }
+.daymark-margin-dates {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  grid-auto-rows: max-content;
+  align-content: start;
+  overflow-anchor: none;
+  scroll-behavior: auto;
+  /* A persistent native rail and clipped edges make the longer timeline apparent. */
+  mask-image: linear-gradient(to bottom, transparent, #000 6px, #000 calc(100% - 6px), transparent);
+  isolation: isolate;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: scroll;
+  overscroll-behavior: contain;
+  position: relative;
+  scrollbar-gutter: auto;
+}
+/* Reserve the full locale's date gutter even when every day is folded. These
+   zero-height intrinsic-size samples never add a row or enter accessibility. */
+.daymark-margin-dates::before, .daymark-margin-dates::after {
+  grid-column: 1; grid-row: 1; height: 0; line-height: 0; padding-left: 8px;
+  visibility: hidden; white-space: pre; pointer-events: none;
+  font-variant-numeric: tabular-nums;
+}
+.daymark-margin-dates::before {
+  content: attr(data-gutter-labels); font-size: var(--font-ui-small);
+  font-weight: var(--nav-item-weight-active, var(--font-normal));
+}
+.daymark-margin-dates::after {
+  content: attr(data-gutter-number); font-size: var(--font-ui-medium);
+  font-weight: var(--font-normal);
+}
+.daymark-margin-dates::-webkit-scrollbar { width: 6px; }
+.daymark-margin-dates::-webkit-scrollbar-track {
+  background: color-mix(in srgb, var(--background-modifier-border) 25%, transparent);
+}
+.daymark-margin-dates::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--text-muted) 45%, transparent);
+  border-radius: var(--radius-s);
+}
+.daymark-margin-dates::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+.daymark-margin-dates > :is(.daymark-margin-day, .daymark-margin-month-boundary)::after {
+  background: var(--daymark-spine-color);
+  content: "";
+  grid-column: 2 / 3;
+  left: var(--daymark-spine-offset);
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  pointer-events: none;
+  z-index: 2;
+}
+.daymark-margin-day {
+  --daymark-link-font-size: min(var(--font-ui-smaller), calc(var(--font-ui-medium) * .85));
+  --daymark-link-height: max(18px, calc(var(--daymark-link-font-size) * 1.25 + 2px));
+  --daymark-day-height: var(--daymark-row-min);
+  display: grid; grid-column: 1 / -1; grid-template-columns: subgrid;
+  align-items: start;
+  position: relative; min-height: var(--daymark-day-height); width: 100%; text-align: start;
+  border-radius: var(--daymark-row-radius);
+  corner-shape: var(--corner-shape, round);
+}
+.daymark-margin-day.has-linked-notes:not(.is-unnamed):not(.is-editing) {
+  --daymark-day-height: max(var(--daymark-row-min), calc(var(--font-ui-medium) * 1.25 + var(--daymark-link-height)));
+}
+.daymark-margin-recurring {
+  --daymark-grain-top: 3px;
+  --daymark-grain-bottom: 3px;
+  position: absolute; grid-column: 1 / 3;
+  inset: 0 calc(26px - var(--daymark-spine-offset) + 4px) 0 4px;
+  /* 8 / sqrt(2) keeps the diagonal repeat seamless in a fixed 8px tile.
+     Auto-sized gradients wrap at each row's height, breaking the shared origin. */
+  background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--daymark-mark-color) 36%, transparent) 0 1px, transparent 1px 5.656854px);
+  background-size: 8px 8px;
+  background-position-y: var(--daymark-grain-y, 0px);
+  mask-image: linear-gradient(to right, #000 4px, transparent),
+    linear-gradient(to bottom, transparent, #000 var(--daymark-grain-top), #000 calc(100% - var(--daymark-grain-bottom)), transparent);
+  mask-composite: intersect;
+  visibility: var(--daymark-grain-visibility, visible);
+  pointer-events: none; z-index: -1;
+}
+.daymark-margin-day.is-highlighted:not([hidden]) + .daymark-margin-day.is-highlighted > .daymark-margin-recurring {
+  --daymark-grain-top: 0px;
+}
+.daymark-margin-day.is-highlighted:has(+ .daymark-margin-day.is-highlighted:not([hidden])) > .daymark-margin-recurring {
+  --daymark-grain-bottom: 0px;
+}
+.daymark-margin-day:is(.is-selected, .is-today, .is-editing) {
+  --daymark-grain-visibility: hidden;
+}
+.daymark-margin-day::before {
+  content: "";
+  position: absolute;
+  inset: var(--daymark-row-inset) 4px;
+  border-radius: inherit;
+  corner-shape: inherit;
+  background: var(--daymark-row-background, transparent);
+  box-shadow: var(--daymark-row-shadow, none);
+  pointer-events: none;
+  z-index: -1;
+}
+.daymark-calendar-view .daymark-margin-date {
+  position: relative;
+  grid-column: 1 / 3;
+  grid-row: 1;
+  min-width: 0;
+  height: var(--daymark-day-height);
+  display: grid;
+  grid-template-columns: subgrid;
+  grid-template-rows: max-content max-content;
+  align-content: center;
+  align-items: center;
+  text-align: start;
+  border-radius: 0;
+}
+.daymark-margin-number {
+  grid-column: 1; grid-row: 1;
+  color: var(--text-normal);
+  font-size: var(--font-ui-medium);
+  font-weight: var(--font-normal);
+  font-variant-numeric: tabular-nums;
+  min-width: 0;
+  text-align: center;
+  padding-left: 8px;
+  line-height: 1.15;
+}
+.daymark-margin-weekday {
+  grid-column: 1; grid-row: 2;
+  display: grid;
+  grid-template-areas: "label";
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  font-weight: var(--font-normal);
+  white-space: nowrap;
+  line-height: 1.15;
+  padding-left: 8px;
+  text-align: center;
+}
+.daymark-margin-weekday-label,
+.daymark-margin-weekday::before { grid-area: label; }
+/* Keep the weekday column stable when its selected label gains weight. */
+.daymark-margin-weekday::before {
+  content: attr(data-weekday);
+  font-weight: var(--nav-item-weight-active, var(--font-normal));
+  visibility: hidden;
+  pointer-events: none;
+}
+@media (hover: hover) and (pointer: fine) {
+  .daymark-margin-day:where(:has(> .daymark-margin-date:hover, .daymark-margin-lens-value:hover)),
+  .daymark-margin-fold:where(:has(> .daymark-margin-fold-toggle:hover)) { --daymark-row-background: var(--nav-item-background-hover, var(--background-modifier-hover)); }
+}
+.daymark-margin-day.is-editing { --daymark-row-background: color-mix(in srgb, var(--interactive-accent) 10%, transparent); }
+.daymark-margin-day.is-selected {
+  --daymark-row-background: var(--nav-item-background-active, var(--background-modifier-hover));
+}
+.daymark-calendar-view .daymark-margin-day.is-selected :is(.daymark-margin-number, .daymark-margin-weekday, .daymark-margin-name, .daymark-margin-name-input, .daymark-margin-lens-value) {
+  color: var(--nav-item-color-active, var(--text-normal));
+  caret-color: var(--text-accent);
+}
+.daymark-calendar-view .daymark-margin-day.is-selected :is(.daymark-margin-weekday, .daymark-margin-name, .daymark-margin-name-input, .daymark-margin-lens-value) {
+  font-weight: var(--nav-item-weight-active, var(--font-normal));
+}
+.daymark-calendar-view .daymark-margin-day.is-today .daymark-margin-number { color: var(--text-accent); }
+.daymark-margin-day.is-today {
+  --daymark-row-shadow: inset 0 0 0 1px color-mix(in srgb, var(--interactive-accent) 30%, transparent);
+}
+.daymark-margin-day.is-today:not(.is-selected) {
+  --daymark-row-background: color-mix(in srgb, var(--interactive-accent) 7%, transparent);
+}
+.daymark-margin-spine-hit {
+  position: absolute; grid-column: 2 / 3; inset: 0; z-index: 5;
+}
+.daymark-margin-symbol { display: none; pointer-events: none; }
+.daymark-margin-mark, .daymark-margin-emoji { display: block; }
+.daymark-margin-symbol[hidden] { display: none; }
+.daymark-margin-dates > .daymark-margin-day.has-coil::after { top: var(--daymark-day-height); }
+.daymark-margin-dates > .daymark-margin-day.has-emoji:not(.is-editing)::after {
+  background: linear-gradient(to bottom,
+    var(--daymark-spine-color) calc(var(--daymark-day-height) / 2 - var(--daymark-emoji-gap)),
+    transparent calc(var(--daymark-day-height) / 2 - var(--daymark-emoji-gap)),
+    transparent calc(var(--daymark-day-height) / 2 + var(--daymark-emoji-gap)),
+    var(--daymark-spine-color) calc(var(--daymark-day-height) / 2 + var(--daymark-emoji-gap)));
+}
+.daymark-margin-emoji {
+  position: absolute; grid-column: 2 / 3;
+  left: calc(var(--daymark-spine-offset) + .5px); top: 50%;
+  transform: translate(-50%, -50%); z-index: 4;
+  font-size: var(--font-ui-small); font-weight: var(--font-normal);
+  width: 1em; height: 1em; line-height: 1; text-align: center;
+}
+.daymark-margin-mark {
+  position: absolute;
+  grid-column: 2 / 3;
+  left: calc(var(--daymark-spine-offset) - 7.5px);
+  top: 0; bottom: 0; width: 16px;
+  z-index: 3;
+}
+.daymark-margin-coil { display: block; width: 100%; height: 100%; overflow: hidden; }
+.daymark-margin-coil path {
+  fill: none; stroke: var(--daymark-mark-color); stroke-width: 1.2px;
+  stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke;
+}
+.daymark-calendar-view.is-margin-view .daymark-visually-hidden { left: 0; top: 0; }
+.daymark-margin-month-boundary {
+  display: grid; grid-column: 1 / -1; grid-template-columns: subgrid;
+  align-items: center; position: relative; min-width: 0; min-height: var(--daymark-row-min);
+}
+.daymark-margin-boundary-label {
+  grid-column: 3; margin: 0 8px 0 4px; min-width: 0;
+  color: var(--text-muted); font-size: var(--font-ui-smaller); line-height: 1.25;
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+.daymark-margin-details {
+  grid-column: 3; grid-row: 1; min-width: 0; align-self: start;
+  /* One normal-flow column owns the name, preview, and expanded list. */
+  display: flex; flex-direction: column;
+}
+.daymark-margin-details-main {
+  position: relative; height: var(--daymark-day-height); min-width: 0;
+  display: flex; flex-direction: column; justify-content: center; flex-shrink: 0;
+}
+.daymark-margin-name-slot {
+  position: relative; margin: 0 8px 0 4px; min-width: 0; height: 100%; flex-shrink: 0;
+}
+.daymark-margin-day.has-linked-notes:not(.is-editing) .daymark-margin-name-slot {
+  height: calc(var(--daymark-day-height) - var(--daymark-link-height));
+}
+.daymark-margin-day.is-unnamed.has-linked-notes:not(.is-editing) .daymark-margin-name-slot {
+  display: none;
+}
+.daymark-margin-day.is-editing :is(.daymark-margin-linked-preview, .daymark-margin-linked-list) { display: none; }
+.daymark-margin-linked-preview {
+  display: flex; align-items: center; flex-shrink: 0;
+  gap: 4px; min-width: 0; height: var(--daymark-link-height); margin: 0 8px 0 4px;
+}
+.daymark-calendar-view :is(.daymark-margin-linked-first, .daymark-margin-linked-more, .daymark-margin-linked-note) {
+  display: flex; align-items: center; justify-content: flex-start;
+  min-width: 0; max-width: 100%; height: var(--daymark-link-height);
+  margin: 0; padding: 0; border: 0; border-radius: var(--radius-s); box-shadow: none;
+  color: var(--text-muted); background: transparent; font-family: var(--font-interface);
+  font-size: var(--daymark-link-font-size); font-weight: var(--font-normal); line-height: 1.25; text-align: start;
+  cursor: var(--cursor-link);
+}
+.daymark-calendar-view .daymark-margin-linked-first { flex: 0 1 auto; }
+.daymark-margin-linked-title {
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  text-decoration: underline dotted var(--daymark-mark-color);
+  text-decoration-thickness: 1px; text-underline-offset: 3px;
+}
+.daymark-calendar-view .daymark-margin-linked-more {
+  flex: 0 0 auto; gap: 2px; padding: 0 2px; min-width: 30px; justify-content: center;
+  margin-left: auto; font-variant-numeric: tabular-nums;
+  border-radius: var(--daymark-row-radius); corner-shape: var(--corner-shape, round);
+}
+.daymark-margin-linked-chevron { display: flex; }
+.daymark-margin-linked-chevron svg { width: 10px; height: 10px; }
+.daymark-margin-linked-more[aria-expanded="true"] .daymark-margin-linked-chevron { transform: rotate(180deg); }
+.daymark-margin-linked-list {
+  display: flex; flex-direction: column; flex-shrink: 0; min-width: 0; margin: 0 8px 4px 4px;
+}
+.daymark-margin-linked-list[hidden] { display: none; }
+.daymark-calendar-view .daymark-margin-linked-note { flex-shrink: 0; width: 100%; height: max(20px, var(--daymark-link-height)); }
+.daymark-calendar-view :is(.daymark-margin-linked-first, .daymark-margin-linked-note):is(:hover, :focus-visible) {
+  color: var(--text-accent); background: transparent;
+}
+.daymark-calendar-view :is(.daymark-margin-linked-first, .daymark-margin-linked-note):is(:hover, :focus-visible) .daymark-margin-linked-title {
+  text-decoration-style: solid; text-decoration-color: currentColor;
+}
+.daymark-calendar-view .daymark-margin-linked-more:is(:hover, :focus-visible) {
+  background: var(--nav-item-background-hover, var(--background-modifier-hover)); color: var(--text-normal);
+}
+.daymark-calendar-view :is(.daymark-margin-linked-first, .daymark-margin-linked-more, .daymark-margin-linked-note):focus-visible {
+  outline: 1px solid var(--interactive-accent); outline-offset: -1px;
+}
+.daymark-calendar-view .daymark-margin-name {
+  position: relative; display: block; width: 100%; height: 100%; text-align: start;
+  font-size: var(--font-ui-medium); overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  line-height: 1.25;
+  cursor: text;
+}
+.daymark-calendar-view .daymark-margin-name.is-readonly { display: flex; align-items: center; cursor: default; }
+.daymark-margin-name-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.daymark-calendar-view .daymark-margin-name.is-empty {
+  align-items: center; justify-content: flex-start; display: flex;
+  color: var(--text-muted); opacity: 0; width: 100%; transition: opacity 0s;
+}
+.daymark-margin-name-icon { display: flex; pointer-events: none; }
+.daymark-margin-name-icon svg { width: 14px; height: 14px; }
+.daymark-margin-name-slot:hover .daymark-margin-name.is-empty,
+.daymark-calendar-view .daymark-margin-name.is-empty:focus-visible { opacity: 1; }
+@media (hover: hover) and (pointer: fine) {
+  .daymark-margin-name-slot:hover .daymark-margin-name.is-empty { transition-delay: 180ms; }
+}
+.daymark-calendar-view .daymark-margin-name.is-empty:focus-visible { transition: none; }
+.daymark-calendar-view input.daymark-margin-name-input {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  width: 100%; height: 100%; min-width: 0; padding: 0;
+  border: 0; border-radius: 0; background: transparent; color: var(--text-normal);
+  font-family: var(--font-interface); font-size: var(--font-ui-medium);
+  line-height: 1.25;
+  box-shadow: none; caret-color: var(--text-accent);
+}
+.daymark-calendar-view input.daymark-margin-name-input:focus {
+  border: 0; outline: none; box-shadow: none;
+}
+.daymark-calendar-view :is(.daymark-margin-date, .daymark-margin-name):focus-visible { outline: none; }
+.daymark-calendar-view .daymark-margin-name:focus-visible,
+.daymark-margin-date:focus-visible .daymark-margin-number { color: var(--text-accent); }
+.daymark-margin-day:is(.is-editing, :has(:is(.daymark-margin-date, .daymark-margin-name, .daymark-margin-lens-value):focus-visible)),
+.daymark-margin-fold:has(:focus-visible) {
+  --daymark-row-shadow: inset 0 0 0 1px var(--interactive-accent);
+  --daymark-grain-visibility: hidden;
+}
+.daymark-calendar-view :is(.daymark-margin-today):focus-visible {
+  outline: 1px solid var(--interactive-accent); outline-offset: -2px;
+}
+.tooltip.daymark-margin-tooltip {
+  animation: none; background: var(--background-secondary, var(--background-primary));
+  border: 1px solid var(--background-modifier-border); box-shadow: none; color: var(--text-muted);
+  font-size: var(--font-ui-smaller); font-weight: var(--font-normal); line-height: 1.35;
+  max-width: 200px; padding: 4px 7px; text-align: start; white-space: pre-line;
+}
+.daymark-margin-tooltip .tooltip-arrow { display: none; }
+.daymark-margin-tally-toolbar { display: contents; }
+.daymark-calendar-view :is(.daymark-margin-tally-toggle, .daymark-margin-tally-item, .daymark-margin-lens-value) {
+  background: transparent; border: 0; box-shadow: none; margin: 0;
+  color: var(--text-normal); font-family: var(--font-interface); font-weight: var(--font-normal);
+}
+.daymark-calendar-view :is(.daymark-margin-today, .daymark-margin-tally-toggle) {
+  box-sizing: border-box; flex: 0 0 auto;
+  display: flex; align-items: center; justify-content: center;
+  font-size: var(--font-ui-small); width: var(--daymark-header-control-width); min-width: 0;
+  padding: 0 2px; height: 32px; min-height: 0;
+  color: var(--text-muted); border-radius: var(--radius-s);
+}
+.daymark-calendar-view .daymark-margin-tally-toggle.has-lens {
+  color: var(--text-accent);
+}
+.daymark-margin-tally-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.daymark-margin-tally-total { flex: 0 0 auto; font-variant-numeric: tabular-nums; }
+.daymark-calendar-view .daymark-margin-tally-item:hover,
+:is(.daymark-margin-today:hover, .daymark-margin-tally-toggle:hover, .daymark-margin-tally-toggle[aria-expanded="true"]) .daymark-margin-header-chip { background: var(--background-modifier-hover); }
+.daymark-margin-tally-toggle.has-lens .daymark-margin-header-chip { background: var(--nav-item-background-active, var(--background-modifier-hover)); }
+.daymark-margin-tally-panel {
+  position: absolute; top: var(--daymark-margin-header-height); left: 8px; right: 8px;
+  z-index: 10; max-height: min(420px, calc(100% - var(--daymark-margin-header-height) - 40px));
+  display: flex; flex-direction: column; padding: 6px; border-radius: var(--radius-m);
+  background: var(--background-primary); border: 1px solid var(--background-modifier-border);
+  box-shadow: var(--shadow-s); overflow: hidden;
+}
+.daymark-margin-tally-panel[hidden] { display: none; }
+.daymark-margin-tally-heading { display: flex; align-items: center; gap: 6px; padding: 0 6px 5px; flex-shrink: 0; }
+.daymark-margin-tally-title { flex: 1; min-width: 0; color: var(--text-muted); font-size: var(--font-ui-smaller); }
+.daymark-margin-tally-list { min-height: 0; overflow-y: auto; }
+.daymark-calendar-view .daymark-margin-tally-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  min-height: 32px; width: 100%; height: auto; padding: 6px;
+  text-align: start; font-size: var(--font-ui-small); border-radius: var(--radius-s);
+}
+.daymark-calendar-view .daymark-margin-tally-item[aria-pressed="true"] {
+  background: var(--nav-item-background-active, var(--background-modifier-hover));
+  color: var(--nav-item-color-active, var(--text-normal));
+  font-weight: var(--nav-item-weight-active, var(--font-normal));
+}
+.daymark-margin-tally-item:not(.is-tag) + .daymark-margin-tally-item.is-tag { margin-top: 6px; }
+.daymark-margin-day.has-lens:not(.is-editing) .daymark-margin-name-slot,
+.daymark-margin-day.is-editing .daymark-margin-lens-value { display: none; }
+.daymark-calendar-view .daymark-margin-lens-value {
+  flex-shrink: 0; min-width: 0; height: 100%; padding: 0; margin: 0 12px 0 4px;
+  display: flex; align-items: center; gap: 8px; font-size: var(--font-ui-small); text-align: start;
+}
+.daymark-margin-lens-track { display: flex; flex: 1; min-width: 0; }
+.daymark-margin-lens-bar { height: 5px; border-radius: 1px; background: color-mix(in srgb, var(--interactive-accent) 65%, transparent); }
+.daymark-margin-lens-number { flex: 0 1 auto; font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.daymark-calendar-view .daymark-margin-lens-value:focus-visible { outline: none; }
+.daymark-calendar-view :is(.daymark-margin-tally-toggle, .daymark-margin-tally-item):focus-visible { outline: 1px solid var(--interactive-accent); outline-offset: -1px; }
+.tooltip.daymark-margin-linked-tooltip {
+  max-width: min(280px, calc(100vw - 24px)); white-space: pre-line; overflow-wrap: anywhere; text-align: start;
+}
+.tooltip.daymark-margin-name-tooltip {
+  max-width: min(240px, calc(100vw - 24px));
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+@container daymark-sidebar (max-width: 239px) {
+  .daymark-margin-month-long { display: none; }
+  .daymark-margin-month-short { display: inline; }
+}
+@media (pointer: coarse) {
+  .daymark-calendar-container .view-content.daymark-calendar-view.is-margin-view {
+    --daymark-row-min: max(44px, var(--daymark-date-block-height));
+    --daymark-margin-header-height: 52px; --daymark-header-control-width: 44px;
+  }
+  .daymark-calendar-view :is(.daymark-margin-tally-item) { min-height: 44px; min-width: 44px; }
+  .daymark-calendar-view :is(.daymark-margin-today, .daymark-margin-tally-toggle) { height: 44px; }
+  @container daymark-sidebar (max-width: 279px) {
+    .daymark-margin-month-long { display: none; }
+    .daymark-margin-month-short { display: inline; }
+  }
+  .daymark-calendar-view input.daymark-margin-name-input { height: 100%; font-size: max(16px, var(--font-ui-medium)); }
+  .daymark-margin-day.has-linked-notes {
+    --daymark-link-height: max(44px, calc(var(--daymark-link-font-size) * 1.25 + 2px));
+  }
+  .daymark-margin-day.has-linked-notes:not(.is-unnamed):not(.is-editing) {
+    --daymark-link-height: max(32px, calc(var(--daymark-link-font-size) * 1.25 + 2px));
+    --daymark-day-height: max(var(--daymark-row-min), calc(2 * var(--daymark-link-height)));
+  }
+  .daymark-calendar-view .daymark-margin-linked-note { min-height: 44px; }
+  .daymark-calendar-view .daymark-margin-linked-more { min-width: 44px; justify-content: center; }
+  .daymark-calendar-view .daymark-margin-name.is-empty { opacity: 1; }
+}
+
+/* Retain at most one active input outside the recycled date window. */
+.daymark-margin-day.is-parked { position: absolute; top: -10000px; pointer-events: none; }
+
+/* Incomplete counts never masquerade as a final writing-volume coil. */
+.daymark-margin-day.is-writing-pending .daymark-margin-mark {
+  left: var(--daymark-spine-offset); top: calc(50% - 4px); bottom: auto; height: 8px; width: 0;
+  border-left: 1px dotted var(--daymark-mark-color);
+}
+
+/* Folded missing dates: threaded paper with parallel, stepped lower edges. */
+.daymark-margin-day[hidden] { display: none; }
+.daymark-margin-fold {
+  display: grid; grid-column: 1 / -1; grid-template-columns: subgrid;
+  position: relative; min-width: 0;
+  border-radius: var(--daymark-row-radius); corner-shape: var(--corner-shape, round);
+}
+.daymark-margin-fold::after {
+  content: ""; position: absolute; grid-column: 2 / 3;
+  left: var(--daymark-spine-offset); top: 0; bottom: 0; width: 1px;
+  background: var(--daymark-mark-color); pointer-events: none; z-index: 2;
+}
+.daymark-calendar-view .daymark-margin-fold-toggle {
+  display: grid; grid-column: 1 / -1; grid-template-columns: subgrid;
+  position: relative; min-width: 0; height: max(60px, calc(var(--daymark-row-min) + 16px));
+  padding: 0; margin: 0; border: 0; border-radius: inherit; corner-shape: inherit; box-shadow: none;
+  background: transparent; color: var(--text-muted); font-family: var(--font-interface);
+  font-size: var(--font-ui-small); font-weight: var(--font-normal); cursor: pointer;
+}
+.daymark-margin-fold-range {
+  grid-column: 1; align-self: center; display: flex; flex-direction: column;
+  align-items: center; gap: 2px; padding: 0 0 8px 8px; z-index: 2;
+  font-size: var(--font-ui-smaller); font-variant-numeric: tabular-nums;
+  white-space: nowrap; line-height: 1.2;
+}
+.daymark-margin-fold-month { color: var(--text-muted); font-size: .9em; }
+.daymark-margin-fold-paper {
+  position: absolute; grid-column: 1 / -1;
+  inset: var(--daymark-row-inset) 4px calc(var(--daymark-row-inset) + 8px);
+  border-radius: inherit; corner-shape: inherit;
+}
+.daymark-margin-fold-paper::before, .daymark-margin-fold-paper::after, .daymark-margin-fold-face {
+  position: absolute; inset: 0; grid-column: 1 / -1;
+  border: 1px solid var(--background-modifier-border); border-radius: inherit; corner-shape: inherit;
+  background: var(--background-primary); box-sizing: border-box;
+}
+.daymark-margin-fold-paper::before {
+  content: ""; transform: translateY(8px); right: 6px;
+  border-color: color-mix(in srgb, var(--background-modifier-border) 65%, transparent);
+}
+.daymark-margin-fold-paper::after {
+  content: ""; transform: translateY(4px); right: 3px;
+  border-color: color-mix(in srgb, var(--background-modifier-border) 85%, transparent);
+}
+.daymark-margin-fold-face {
+  z-index: 1;
+  background: linear-gradient(var(--daymark-row-background, transparent), var(--daymark-row-background, transparent)), var(--background-primary);
+  box-shadow: var(--daymark-row-shadow, none);
+}
+.daymark-margin-fold-content {
+  grid-column: 3; align-self: center; z-index: 2;
+  display: flex; align-items: center; gap: 6px; min-width: 0;
+  padding: 0 14px 8px 4px; text-align: start;
+}
+.daymark-margin-fold-title { flex: 1; min-width: 0; white-space: nowrap; }
+.daymark-margin-fold-chevron { display: flex; flex: none; }
+.daymark-margin-fold-chevron svg { width: 14px; height: 14px; }
+.daymark-margin-fold-eyelets {
+  position: absolute; grid-column: 2 / 3; inset: var(--daymark-row-inset) 0 calc(var(--daymark-row-inset) + 8px); z-index: 3;
+  pointer-events: none;
+}
+.daymark-margin-fold-eyelets::before, .daymark-margin-fold-eyelets::after {
+  content: ""; position: absolute; left: calc(var(--daymark-spine-offset) - 2px);
+  width: 5px; height: 5px; border: 1px solid var(--daymark-mark-color); border-radius: 50%;
+  box-sizing: border-box; background: var(--background-primary);
+}
+.daymark-margin-fold-eyelets::before { top: 6px; }
+.daymark-margin-fold-eyelets::after { bottom: 6px; }
+@media (hover: hover) and (pointer: fine) {
+  .daymark-margin-fold-toggle:hover { color: var(--text-normal); }
+  .daymark-margin-fold-toggle:hover .daymark-margin-fold-face { border-color: transparent; }
+}
+.daymark-calendar-view.is-margin-view .daymark-margin-fold-toggle:is(:hover, :active) {
+  background: transparent; box-shadow: none;
+}
+.daymark-margin-fold-toggle:focus-visible .daymark-margin-fold-face,
+.daymark-margin-fold.is-expanded .daymark-margin-fold-face { border-color: transparent; }
+.daymark-calendar-view .daymark-margin-fold-toggle:focus-visible { outline: none; }
+.daymark-margin-fold.is-expanded .daymark-margin-fold-paper::before,
+.daymark-margin-fold.is-expanded .daymark-margin-fold-paper::after,
+.daymark-margin-fold.is-expanded .daymark-margin-fold-eyelets { display: none; }
+.daymark-margin-fold.is-expanded .daymark-margin-fold-chevron { transform: rotate(180deg); }
