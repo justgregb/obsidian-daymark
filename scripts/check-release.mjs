@@ -1,11 +1,13 @@
 import { readFile, stat } from "node:fs/promises";
 import { checkPublicCopy } from "./public-copy.mjs";
+import { checkStyles } from "./check-styles.mjs";
 
 const runtimeFiles = ["manifest.json", "main.js", "styles.css"];
 // Includes continuous recurring grain and shared stack/day styling; no runtime dependencies.
 const MAX_RUNTIME_BYTES = 192 * 1024;
 
 await checkPublicCopy();
+await checkStyles();
 
 const sizes = await Promise.all(runtimeFiles.map(async (path) => {
   const details = await stat(path);

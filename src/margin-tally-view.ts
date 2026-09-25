@@ -1,5 +1,6 @@
 import { setIcon, setTooltip } from "obsidian";
 import { numberFormatter } from "./intl-cache";
+import { marginTooltipOptions } from "./margin-calendar-view";
 import type { MarginTallyLens } from "./margin-tally";
 
 export interface MarginTallyControls {
@@ -99,9 +100,7 @@ export function createMarginTally(parent: HTMLElement, context: MarginTallyContr
   };
   const update = (): void => {
     const format = numberFormatter(context.locale, { maximumFractionDigits: 3 });
-    setTooltip(toggle, context.lens ? `Tally · ${context.lens.label} · ${format.format(context.lens.total)}` : "Tally", {
-      classes: ["daymark-margin-tooltip"], delay: 650, placement: "bottom", gap: 5
-    });
+    setTooltip(toggle, context.lens ? `Tally · ${context.lens.label} · ${format.format(context.lens.total)}` : "Tally", marginTooltipOptions);
     toggle.toggleClass("has-lens", context.lens !== null);
     if (expanded) ensurePanel();
     panel.hidden = !expanded;

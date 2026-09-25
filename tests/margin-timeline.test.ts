@@ -179,6 +179,41 @@ describe("continuous Margin timeline", () => {
     expect(onScroll).toHaveBeenCalledExactlyOnceWith({ date: "2026-09-10", fraction: 0 }, { year: 2026, month: 9, day: 20 });
     timeline.dispose();
   });
+  it("delegates hover and keyboard focus without layout work, then removes the handlers", () => {
+    const { timeline, dates } = fixture();
+    const row = dates.children.find(row => row.dataset.date === "2026-09-01")!;
+    const measure = vi.spyOn(row, "getBoundingClientRect");
+    let keyboard = false;
+    const child = {};
+    const control = { closest: () => row, contains: (node: unknown) => node === child, matches: () => keyboard };
+    let nameOnly = false;
+    let linked = false;
+    const target = { closest: (selector: string) => linked || (nameOnly && !selector.includes(".daymark-margin-name")) ? null : control };
+    const fire = (type: string, relatedTarget: unknown = null) => dates.listeners.get(type)!({ type, target, relatedTarget } as unknown as Event);
+    fire("pointerover"); expect(row.classes.has("is-hovered")).toBe(true);
+    fire("pointerout", child); expect(row.classes.has("is-hovered")).toBe(true);
+    fire("pointerout"); expect(row.classes.has("is-hovered")).toBe(false);
+    fire("focusin"); expect(row.classes.has("has-keyboard-focus")).toBe(false);
+    dates.listeners.get("keydown")!({ type: "keydown", target, key: "Shift" } as unknown as Event);
+    expect(row.classes.has("has-keyboard-focus")).toBe(false);
+    dates.listeners.get("keydown")!({ type: "keydown", target, key: "c", metaKey: true } as unknown as Event);
+    expect(row.classes.has("has-keyboard-focus")).toBe(false);
+    dates.listeners.get("keydown")!({ type: "keydown", target, key: "ArrowRight" } as unknown as Event);
+    expect(row.classes.has("has-keyboard-focus")).toBe(true);
+    fire("focusout");
+    keyboard = true;
+    fire("focusin"); expect(row.classes.has("has-keyboard-focus")).toBe(true);
+    fire("focusout"); expect(row.classes.has("has-keyboard-focus")).toBe(false);
+    nameOnly = true;
+    fire("pointerover"); expect(row.classes.has("is-hovered")).toBe(false);
+    fire("focusin"); expect(row.classes.has("has-keyboard-focus")).toBe(true);
+    fire("focusout");
+    linked = true;
+    fire("focusin"); expect(row.classes.has("has-keyboard-focus")).toBe(false);
+    expect(measure).not.toHaveBeenCalled();
+    timeline.dispose();
+    for (const type of ["pointerover", "pointerout", "focusin", "focusout", "keydown"]) expect(dates.listeners.has(type)).toBe(false);
+  });
   it("keeps recurring grain continuous through fractional row heights, linked expansion, and folding", () => {
     layout.height = 24.75;
     const { timeline, dates, settings } = fixture("2026-09-19", new Map([["2026-09-19", record()], ["2026-09-20", record()]]), new Map(), null, "2026-09-25");
@@ -186,10 +221,12 @@ describe("continuous Margin timeline", () => {
     timeline.refreshDates(["2026-09-19", "2026-09-20"], false);
     const assertJoined = () => {
       let offset = 0;
-      for (const row of dates.children) {
-        if (row.hidden || row.classes.has("is-parked")) continue;
+      const visible = dates.children.filter(row => !row.hidden && !row.classes.has("is-parked"));
+      for (const [index, row] of visible.entries()) {
         if (row.classes.has("is-highlighted")) {
           expect(row.props["--daymark-grain-y"]).toBe(`${-offset}px`);
+          expect(row.props["--daymark-grain-top"]).toBe(offset ? "0px" : "3px");
+          expect(row.props["--daymark-grain-bottom"]).toBe(visible[index + 1]?.classes.has("is-highlighted") ? "0px" : "3px");
           offset += row.getBoundingClientRect().height;
         } else offset = 0;
       }

@@ -187,7 +187,7 @@ Daymark is free and open source. If it makes journaling a little nicer, you can 
 
 ## Release status
 
-Version `0.3.0` adds the optional Margin layout. Release downloads are published on the [GitHub releases page](https://github.com/justgregb/obsidian-daymark/releases).
+Version `0.3.1` improves Margin's CSS compatibility and reduces repeated layout work while preserving its design. Release downloads are published on the [GitHub releases page](https://github.com/justgregb/obsidian-daymark/releases).
 
 ## License
 

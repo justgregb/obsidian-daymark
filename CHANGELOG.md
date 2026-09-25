@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.1 — 2026-09-25
+
+- Remove Margin's `:has()` selectors and `display: contents`; retain row hover, keyboard focus, and continuous recurring-day shading using shared handlers and the existing layout cache.
+- Preserve dotted linked-note underlines with borders in place of partially supported text-decoration properties.
+- Check source and bundled CSS for these compatibility issues during lint and release validation.
+- Reuse one viewport measurement per timeline fill, calculate folded buffer size without temporary arrays, and share Margin tooltip options with Tally.
+
 ## 0.3.0 — 2026-09-25
 
 - Add the optional **Margin** calendar layout: a continuous timeline with compact date blocks, month separators, a coiled writing spine, and a fixed Today/Tally header. Standard remains the default.

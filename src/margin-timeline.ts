@@ -52,6 +52,7 @@ export interface MarginTimelineOptions {
 }
 
 interface RowPosition { anchor: MarginScrollAnchor; top: number; height: number }
+const rowInteractionEvents = ["pointerover", "pointerout", "focusin", "focusout", "keydown"];
 function positionKey(anchor: MarginScrollAnchor): string { return `${anchor.monthLabel ? "m" : anchor.fold ? "f" : "d"}:${anchor.date}`; }
 
 /** A bounded date window. Only offscreen rows change as a month passes the header. */
@@ -97,6 +98,7 @@ export class MarginTimeline {
     this.nativeScrollEnd = "onscrollend" in this.dates;
     labelForReader(this.dates, "Daily notes timeline. Scroll to browse months.", scroll);
     this.win = parent.ownerDocument.defaultView!;
+    for (const type of rowInteractionEvents) this.dates.addEventListener(type, this.rowInteraction);
     this.fillWindow(this.anchor);
     this.resize();
     this.dates.addEventListener("scroll", this.schedule, { passive: true });
@@ -173,6 +175,7 @@ export class MarginTimeline {
 
   dispose(): void {
     this.disposed = true;
+    for (const type of rowInteractionEvents) this.dates.removeEventListener(type, this.rowInteraction);
     this.dates.removeEventListener("scroll", this.schedule);
     this.dates.removeEventListener("scrollend", this.settle);
     this.dates.removeEventListener("pointerdown", this.beginPointer);
@@ -258,11 +261,25 @@ export class MarginTimeline {
     if (this.rowHeight > 0) this.dates.scrollTop = this.offsetFor(this.anchor);
   }
 
+  // Delegate row states once per timeline; no per-row listeners or layout reads.
+  private readonly rowInteraction = (event: Event): void => {
+    const key = event as KeyboardEvent;
+    const keyboard = event.type === "keydown";
+    if (keyboard && (key.altKey || key.ctrlKey || key.metaKey || key.key === "Shift")) return;
+    const focus = keyboard || event.type.startsWith("focus");
+    const control = (event.target as Element).closest(focus
+      ? ".daymark-margin-date, .daymark-margin-name, .daymark-margin-lens-value"
+      : ".daymark-margin-date, .daymark-margin-lens-value");
+    if (!control || control.contains((event as FocusEvent).relatedTarget as Node | null)) return;
+    control.closest<HTMLElement>(".daymark-margin-day")?.toggleClass(focus ? "has-keyboard-focus" : "is-hovered",
+      focus ? keyboard || event.type === "focusin" && control.matches(":focus-visible") : event.type === "pointerover");
+  };
+
   // Read layout only after content/size changes. Scroll events use this bounded
   // cache and binary search, including when a linked-note list expands a date.
   private measure(): boolean {
     const positions: RowPosition[] = [];
-    const grain: { row: HTMLElement; y: string }[] = [];
+    const grain: { row: HTMLElement; y: string; start: boolean; end: boolean }[] = [];
     let grainOffset = 0;
     let top = 0;
     for (const child of Array.from(this.dates.children) as HTMLElement[]) {
@@ -273,15 +290,19 @@ export class MarginTimeline {
       const anchor: MarginScrollAnchor = { date, fraction: 0, ...(child.dataset.month ? { monthLabel: true as const } : {}), ...(child.dataset.fold ? { fold: true as const } : {}) };
       positions.push({ anchor, top, height });
       if (child.classList.contains("is-highlighted")) {
-        grain.push({ row: child, y: `${-grainOffset}px` });
+        if (grainOffset) grain[grain.length - 1].end = false;
+        grain.push({ row: child, y: `${-grainOffset}px`, start: grainOffset === 0, end: true });
         grainOffset += height;
       } else grainOffset = 0;
       top += height;
     }
     // Each recurring run shares a pattern origin, stable across month recycling
     // and linked-list expansion. Batch paint-only writes after layout reads.
-    for (const { row, y } of grain) {
-      if (row.style.getPropertyValue("--daymark-grain-y") !== y) row.style.setProperty("--daymark-grain-y", y);
+    for (const { row, y, start, end } of grain) {
+      for (const [key, value] of [["y", y], ["top", start ? "3px" : "0px"], ["bottom", end ? "3px" : "0px"]]) {
+        const property = `--daymark-grain-${key}`;
+        if (row.style.getPropertyValue(property) !== value) row.style.setProperty(property, value);
+      }
     }
     const changed = positions.length !== this.positions.length || positions.some((position, index) => {
       const old = this.positions[index];
@@ -364,7 +385,8 @@ export class MarginTimeline {
   private fillWindow(anchor: MarginScrollAnchor, recycle = false): boolean {
     const date = parseIsoDate(anchor.date)!;
     let start = shiftAnchor(monthStart(date), "month", -2);
-    const visibleDays = Math.ceil(this.dates.clientHeight / (this.rowHeight || 24));
+    const viewportHeight = this.dates.clientHeight;
+    const visibleDays = Math.ceil(viewportHeight / (this.rowHeight || 24));
     let end = shiftAnchor(monthStart(addDays(date, visibleDays)), "month", 3);
     if (!recycle && compareDates(date, this.start) >= 0 && compareDates(date, this.end) < 0) {
       if (compareDates(this.start, start) < 0) start = this.start;
@@ -373,15 +395,16 @@ export class MarginTimeline {
     let changed = this.loadWindow(start, end, anchor);
     // A folded month can be only two rows tall. Fill a measured buffer on both
     // sides instead of assuming that a fixed number of dates fills the viewport.
-    for (let attempt = 0; attempt < 3 && this.folds.size > 0 && this.dates.clientHeight > 0; attempt++) {
+    for (let attempt = 0; attempt < 3 && this.folds.size > 0 && viewportHeight > 0; attempt++) {
       const top = this.offsetFor(anchor);
       const last = this.positions[this.positions.length - 1];
       const total = last ? last.top + last.height : 0;
       const labelHeight = this.rowHeight || this.positions.find(position => position.anchor.monthLabel)?.height || 24;
-      const foldHeights = this.positions.filter(position => position.anchor.fold).map(position => position.height);
-      const minimumMonth = labelHeight + Math.min(...foldHeights);
-      const before = Math.max(0, Math.ceil((this.dates.clientHeight - top) / minimumMonth));
-      const after = Math.max(0, Math.ceil((this.dates.clientHeight * 2 - (total - top)) / minimumMonth));
+      let minimumFold = Infinity;
+      for (const position of this.positions) if (position.anchor.fold) minimumFold = Math.min(minimumFold, position.height);
+      const minimumMonth = labelHeight + minimumFold;
+      const before = Math.max(0, Math.ceil((viewportHeight - top) / minimumMonth));
+      const after = Math.max(0, Math.ceil((viewportHeight * 2 - (total - top)) / minimumMonth));
       if (!before && !after) break;
       start = shiftAnchor(start, "month", -before);
       end = shiftAnchor(end, "month", after);

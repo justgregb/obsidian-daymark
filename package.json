@@ -1,6 +1,6 @@
 {
   "name": "obsidian-daymark",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Browse daily notes in calendar or Margin views, capture quick thoughts, and summarize journal activity with Tally.",
   "type": "module",
   "private": true,
@@ -12,7 +12,7 @@
     "copy:check": "node scripts/public-copy.mjs check",
     "copy:show": "node scripts/public-copy.mjs show",
     "copy:sync": "node scripts/public-copy.mjs sync",
-    "lint": "eslint .",
+    "lint": "eslint . && node scripts/check-styles.mjs",
     "test": "vitest run",
     "benchmark": "vitest bench --run",
     "test:watch": "vitest",

@@ -8,7 +8,7 @@ import type { MarginTallyLens } from "./margin-tally";
 import type { DailyRecord, DaymarkSettings, LinkedNote, PlainDate, Weekday } from "./types";
 
 let labelSequence = 0;
-const tooltipOptions: TooltipOptions = {
+export const marginTooltipOptions: TooltipOptions = {
   classes: ["daymark-margin-tooltip"], delay: 650, placement: "bottom", gap: 5
 };
 
@@ -75,7 +75,7 @@ export function createMarginHeader(
   const actions = header.createDiv("daymark-margin-actions");
   const today = actions.createEl("button", { cls: "daymark-margin-today" });
   today.type = "button";
-  setTooltip(today, "Go to today", tooltipOptions);
+  setTooltip(today, "Go to today", marginTooltipOptions);
   setIcon(today.createSpan("daymark-margin-header-chip"), "locate-fixed");
   today.addEventListener("click", navigation.onToday);
   return actions.createDiv("daymark-margin-tally-slot");
@@ -105,7 +105,7 @@ export function updateMarginHeader(parent: HTMLElement, month: PlainDate, locale
 
 function setClippedNameHint(element: HTMLElement, name: string): void {
   const options: TooltipOptions = {
-    ...tooltipOptions, classes: [...(tooltipOptions.classes ?? []), "daymark-margin-name-tooltip"]
+    ...marginTooltipOptions, classes: [...(marginTooltipOptions.classes ?? []), "daymark-margin-name-tooltip"]
   };
   const updateHint = (): void => {
     const clipped = element.clientWidth > 0 && element.scrollWidth > element.clientWidth;
@@ -148,7 +148,7 @@ function createDayName(
       const icon = button.createSpan("daymark-margin-name-icon");
       icon.setAttr("aria-hidden", "true");
       setIcon(icon, "pencil");
-      setTooltip(button, savedName ? "Rename day" : "Name day", tooltipOptions);
+      setTooltip(button, savedName ? "Rename day" : "Name day", marginTooltipOptions);
     }
     labelForReader(button, `${today ? "Today. " : ""}${savedName ? `Edit day name: ${savedName}` : today ? "Rename day" : "Name day"}. ${fullDate}`);
     if (savedName && displayName) setClippedNameHint(button, displayName);
@@ -276,7 +276,7 @@ function createLinkedNotes(row: HTMLElement, main: HTMLElement, details: HTMLEle
     labelForReader(button, `Open linked note: ${note.title}`);
     const folder = note.path.slice(0, note.path.lastIndexOf("/") + 1);
     setTooltip(button, folder ? `${note.title}\n${folder}` : note.title, {
-      ...tooltipOptions, classes: ["daymark-margin-tooltip", "daymark-margin-linked-tooltip"]
+      ...marginTooltipOptions, classes: ["daymark-margin-tooltip", "daymark-margin-linked-tooltip"]
     });
     button.addEventListener("click", event => {
       event.stopPropagation();
@@ -405,7 +405,7 @@ export function createMarginDay(
     }
     if (hit) {
       hit.hidden = (!record && !emoji) || (Boolean(emoji) && editing);
-      setTooltip(hit, emoji ? `${name}\n${detail || "No daily note"}` : detail, tooltipOptions);
+      setTooltip(hit, emoji ? `${name}\n${detail || "No daily note"}` : detail, marginTooltipOptions);
     }
     return text;
   });

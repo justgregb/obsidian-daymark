@@ -1,7 +1,7 @@
 {
   "id": "daymark",
   "name": "Daymark",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "minAppVersion": "1.13.0",
   "description": "Browse daily notes in calendar or Margin views, capture quick thoughts, and summarize journal activity with Tally.",
   "author": "Greg B.",

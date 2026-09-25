@@ -144,8 +144,6 @@
   --daymark-day-height: max(var(--daymark-row-min), calc(var(--font-ui-medium) * 1.25 + var(--daymark-link-height)));
 }
 .daymark-margin-recurring {
-  --daymark-grain-top: 3px;
-  --daymark-grain-bottom: 3px;
   position: absolute; grid-column: 1 / 3;
   inset: 0 calc(26px - var(--daymark-spine-offset) + 4px) 0 4px;
   /* 8 / sqrt(2) keeps the diagonal repeat seamless in a fixed 8px tile.
@@ -154,16 +152,10 @@
   background-size: 8px 8px;
   background-position-y: var(--daymark-grain-y, 0px);
   mask-image: linear-gradient(to right, #000 4px, transparent),
-    linear-gradient(to bottom, transparent, #000 var(--daymark-grain-top), #000 calc(100% - var(--daymark-grain-bottom)), transparent);
+    linear-gradient(to bottom, transparent, #000 var(--daymark-grain-top, 3px), #000 calc(100% - var(--daymark-grain-bottom, 3px)), transparent);
   mask-composite: intersect;
   visibility: var(--daymark-grain-visibility, visible);
   pointer-events: none; z-index: -1;
-}
-.daymark-margin-day.is-highlighted:not([hidden]) + .daymark-margin-day.is-highlighted > .daymark-margin-recurring {
-  --daymark-grain-top: 0px;
-}
-.daymark-margin-day.is-highlighted:has(+ .daymark-margin-day.is-highlighted:not([hidden])) > .daymark-margin-recurring {
-  --daymark-grain-bottom: 0px;
 }
 .daymark-margin-day:is(.is-selected, .is-today, .is-editing) {
   --daymark-grain-visibility: hidden;
@@ -226,8 +218,8 @@
   pointer-events: none;
 }
 @media (hover: hover) and (pointer: fine) {
-  .daymark-margin-day:where(:has(> .daymark-margin-date:hover, .daymark-margin-lens-value:hover)),
-  .daymark-margin-fold:where(:has(> .daymark-margin-fold-toggle:hover)) { --daymark-row-background: var(--nav-item-background-hover, var(--background-modifier-hover)); }
+  .daymark-margin-day:where(.is-hovered),
+  .daymark-margin-fold-toggle:where(:hover) { --daymark-row-background: var(--nav-item-background-hover, var(--background-modifier-hover)); }
 }
 .daymark-margin-day.is-editing { --daymark-row-background: color-mix(in srgb, var(--interactive-accent) 10%, transparent); }
 .daymark-margin-day.is-selected {
@@ -324,8 +316,7 @@
 .daymark-calendar-view .daymark-margin-linked-first { flex: 0 1 auto; }
 .daymark-margin-linked-title {
   min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  text-decoration: underline dotted var(--daymark-mark-color);
-  text-decoration-thickness: 1px; text-underline-offset: 3px;
+  padding-top: 1px; border-bottom: 1px dotted var(--daymark-mark-color);
 }
 .daymark-calendar-view .daymark-margin-linked-more {
   flex: 0 0 auto; gap: 2px; padding: 0 2px; min-width: 30px; justify-content: center;
@@ -344,7 +335,7 @@
   color: var(--text-accent); background: transparent;
 }
 .daymark-calendar-view :is(.daymark-margin-linked-first, .daymark-margin-linked-note):is(:hover, :focus-visible) .daymark-margin-linked-title {
-  text-decoration-style: solid; text-decoration-color: currentColor;
+  border-bottom-style: solid; border-bottom-color: currentColor;
 }
 .daymark-calendar-view .daymark-margin-linked-more:is(:hover, :focus-visible) {
   background: var(--nav-item-background-hover, var(--background-modifier-hover)); color: var(--text-normal);
@@ -386,8 +377,8 @@
 .daymark-calendar-view :is(.daymark-margin-date, .daymark-margin-name):focus-visible { outline: none; }
 .daymark-calendar-view .daymark-margin-name:focus-visible,
 .daymark-margin-date:focus-visible .daymark-margin-number { color: var(--text-accent); }
-.daymark-margin-day:is(.is-editing, :has(:is(.daymark-margin-date, .daymark-margin-name, .daymark-margin-lens-value):focus-visible)),
-.daymark-margin-fold:has(:focus-visible) {
+.daymark-margin-day:is(.is-editing, .has-keyboard-focus),
+.daymark-margin-fold-toggle:focus-visible {
   --daymark-row-shadow: inset 0 0 0 1px var(--interactive-accent);
   --daymark-grain-visibility: hidden;
 }
@@ -401,7 +392,7 @@
   max-width: 200px; padding: 4px 7px; text-align: start; white-space: pre-line;
 }
 .daymark-margin-tooltip .tooltip-arrow { display: none; }
-.daymark-margin-tally-toolbar { display: contents; }
+.daymark-margin-tally-toolbar { display: flex; align-items: center; }
 .daymark-calendar-view :is(.daymark-margin-tally-toggle, .daymark-margin-tally-item, .daymark-margin-lens-value) {
   background: transparent; border: 0; box-shadow: none; margin: 0;
   color: var(--text-normal); font-family: var(--font-interface); font-weight: var(--font-normal);
