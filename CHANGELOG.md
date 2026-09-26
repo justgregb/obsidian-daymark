@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.2 — 2026-09-26
+
+### Bug fixes
+
+- Keep recurring-day shading visible beneath selected, Today, editing, and keyboard-focus states.
+- Allow mobile users to tap existing day names above linked notes to rename them directly; linked titles still open their own notes. Keep desktop naming in the context menu for days with links.
+- Fit mobile day names and linked previews into the normal 44px row at the default text size; grow for larger fonts and keep the height stable while renaming.
+
 ## 0.3.1 — 2026-09-25
 
 - Remove Margin's `:has()` selectors and `display: contents`; retain row hover, keyboard focus, and continuous recurring-day shading using shared handlers and the existing layout cache.

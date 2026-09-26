@@ -1,4 +1,4 @@
-import { Notice, setIcon, setTooltip } from "obsidian";
+import { Notice, Platform, setIcon, setTooltip } from "obsidian";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createMarginDay, createMarginFold, createMarginHeader, createMarginMonthLabel, type MarginCalendarContext } from "../src/margin-calendar-view";
 import { DEFAULT_SETTINGS, type DailyRecord, type Weekday } from "../src/types";
@@ -12,6 +12,7 @@ interface TestMenuItem {
 const menuState = vi.hoisted(() => ({ menus: [] as { items: TestMenuItem[]; positioned: string }[] }));
 
 vi.mock("obsidian", () => ({
+  Platform: { isMobile: false },
   Menu: class {
     items: TestMenuItem[] = [];
     positioned = "";
@@ -99,6 +100,7 @@ const record: DailyRecord = {
 let context: MarginCalendarContext;
 beforeEach(() => {
   vi.clearAllMocks();
+  Platform.isMobile = false;
   menuState.menus.length = 0;
   context = {
     locale: "en", settings: { ...DEFAULT_SETTINGS, dayNames: {} },
@@ -157,6 +159,35 @@ describe("compact linked titles", () => {
     expect(row.find("daymark-margin-name-text").text).toBe("Today");
     expect(row.classes.has("is-unnamed")).toBe(false);
     expect(context.onNameChange).toHaveBeenLastCalledWith(iso, "");
+  });
+  it.each([false, true])("renames a mobile linked day's label directly without opening either note, today=%s", today => {
+    Platform.isMobile = true;
+    if (today) context.todayIso = iso;
+    else context.settings.dayNames[iso] = "✍️ Test";
+    context.onOpenLinkedNote = vi.fn(async () => {});
+    const row = day({ ...record, linkedNotes: notes });
+    const button = row.find("daymark-margin-name");
+    expect(button.classes.has("is-readonly")).toBe(false);
+    expect(row.find("daymark-margin-name-icon")).toBeUndefined();
+    button.fire("click");
+    const input = row.find("daymark-margin-name-input");
+    expect(input.value).toBe(today ? "" : "✍️ Test");
+    input.value = "✍️ Revised";
+    input.fire("keydown", { key: "Enter" });
+    expect(context.onNameChange).toHaveBeenCalledWith(iso, "✍️ Revised");
+    expect(row.find("daymark-margin-name").text).toBe("Revised");
+    expect(context.onSelect).not.toHaveBeenCalled();
+    expect(context.onOpenLinkedNote).not.toHaveBeenCalled();
+    row.find("daymark-margin-linked-first").fire("click", { metaKey: false, ctrlKey: false });
+    expect(context.onOpenLinkedNote).toHaveBeenCalledWith("Books/Dune.md", false);
+  });
+  it("keeps an unnamed mobile linked day free of a pencil or invisible rename control", () => {
+    Platform.isMobile = true;
+    const row = day({ ...record, linkedNotes: notes });
+    expect(row.find("daymark-margin-name")).toBeUndefined();
+    expect(row.find("daymark-margin-name-icon")).toBeUndefined();
+    rename(row);
+    expect(row.find("daymark-margin-name-input")).toBeDefined();
   });
   it("keeps expanded links in the same content column and preserves them through cancelled naming", () => {
     context.expandedLinks = new Set([iso]);

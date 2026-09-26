@@ -140,7 +140,7 @@
   border-radius: var(--daymark-row-radius);
   corner-shape: var(--corner-shape, round);
 }
-.daymark-margin-day.has-linked-notes:not(.is-unnamed):not(.is-editing) {
+.daymark-margin-day.has-linked-notes:not(.is-unnamed) {
   --daymark-day-height: max(var(--daymark-row-min), calc(var(--font-ui-medium) * 1.25 + var(--daymark-link-height)));
 }
 .daymark-margin-recurring {
@@ -154,11 +154,7 @@
   mask-image: linear-gradient(to right, #000 4px, transparent),
     linear-gradient(to bottom, transparent, #000 var(--daymark-grain-top, 3px), #000 calc(100% - var(--daymark-grain-bottom, 3px)), transparent);
   mask-composite: intersect;
-  visibility: var(--daymark-grain-visibility, visible);
   pointer-events: none; z-index: -1;
-}
-.daymark-margin-day:is(.is-selected, .is-today, .is-editing) {
-  --daymark-grain-visibility: hidden;
 }
 .daymark-margin-day::before {
   content: "";
@@ -380,7 +376,6 @@
 .daymark-margin-day:is(.is-editing, .has-keyboard-focus),
 .daymark-margin-fold-toggle:focus-visible {
   --daymark-row-shadow: inset 0 0 0 1px var(--interactive-accent);
-  --daymark-grain-visibility: hidden;
 }
 .daymark-calendar-view :is(.daymark-margin-today):focus-visible {
   outline: 1px solid var(--interactive-accent); outline-offset: -2px;
@@ -472,9 +467,10 @@
   .daymark-margin-day.has-linked-notes {
     --daymark-link-height: max(44px, calc(var(--daymark-link-font-size) * 1.25 + 2px));
   }
-  .daymark-margin-day.has-linked-notes:not(.is-unnamed):not(.is-editing) {
-    --daymark-link-height: max(32px, calc(var(--daymark-link-font-size) * 1.25 + 2px));
-    --daymark-day-height: max(var(--daymark-row-min), calc(2 * var(--daymark-link-height)));
+  .daymark-margin-day.has-linked-notes:not(.is-unnamed) {
+    /* Two compact actions fit the normal day row; large text grows each line. */
+    --daymark-link-height: max(22px, calc(var(--daymark-link-font-size) * 1.25 + 4px));
+    --daymark-day-height: max(var(--daymark-row-min), calc(max(22px, var(--font-ui-medium) * 1.25 + 4px) + var(--daymark-link-height)));
   }
   .daymark-calendar-view .daymark-margin-linked-note { min-height: 44px; }
   .daymark-calendar-view .daymark-margin-linked-more { min-width: 44px; justify-content: center; }

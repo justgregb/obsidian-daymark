@@ -1,5 +1,7 @@
 import type { TooltipOptions } from "obsidian";
 
+export const Platform = { isMobile: new URLSearchParams(location.search).has("mobile") };
+
 type Shape = [string, Record<string, string>];
 
 // Browser stand-ins for the Obsidian icons used by this fixture.

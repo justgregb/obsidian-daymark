@@ -5,6 +5,7 @@ import { aggregateRecords } from "../../src/aggregate";
 import { marginTallyLenses, resolveMarginLens } from "../../src/margin-tally";
 import { createMarginTally } from "../../src/margin-tally-view";
 import { DEFAULT_SETTINGS, type DailyRecord, type PlainDate, type Weekday } from "../../src/types";
+import { checkLinkedCaseLayout, linkedCaseMonth, linkedCaseNames, linkedCaseRecord, linkedCaseToday } from "./margin-linked-cases";
 
 interface ElementOptions { cls?: string; text?: string }
 
@@ -82,8 +83,9 @@ for (const width of widths) {
     const root = container.createDiv("view-content daymark-calendar-view is-margin-view is-month-view");
     const output = fixture.createEl("output");
     output.setAttr("aria-live", "polite");
-    let month: PlainDate = { year: params.has("quiet") ? 2020 : 2026, month: 9, day: 1 };
-    let selectedIso = "2026-09-17";
+    let month: PlainDate = params.has("linked") ? linkedCaseMonth : { year: params.has("quiet") ? 2020 : 2026, month: 9, day: 1 };
+    let selectedIso = params.has("linked") ? "2024-06-02" : "2026-09-17";
+    const todayIso = params.has("linked") ? linkedCaseToday : "2026-09-20";
     let timeline: MarginTimeline | null = null;
     let scrollAnchor: MarginScrollAnchor | null = null;
     let disposeTally: (() => void) | null = null;
@@ -100,7 +102,9 @@ for (const width of widths) {
       tallyTagLabels: { swimming: "Swim sessions" }
     };
     if (params.has("quiet")) settings.dayNames = {};
+    if (params.has("linked")) settings.dayNames = { ...linkedCaseNames };
     const recordForDate = (date: PlainDate): DailyRecord | null => {
+      if (params.has("linked")) return linkedCaseRecord(date);
       if (params.has("quiet")) return null;
       if ((date.day >= 8 && date.day <= 13) || date.day % 3 === 0 || date.day > 20) return null;
       return {
@@ -137,7 +141,7 @@ for (const width of widths) {
       disposeTally?.();
       root.replaceChildren();
       const tallySlot = createMarginHeader(root, month, locale, {
-        onToday: () => selectDate({ year: 2026, month: 9, day: 20 }, "center", false)
+        onToday: () => selectDate(params.has("linked") ? { ...linkedCaseMonth, day: 7 } : { year: 2026, month: 9, day: 20 }, "center", false)
       });
       const refreshHeader = (): void => {
         updateMarginHeader(root, month, locale);
@@ -157,7 +161,7 @@ for (const width of widths) {
       timeline = new MarginTimeline(body, {
         anchor: scrollAnchor ?? { date: toIsoDate(month), fraction: 0 }, recordForDate, expandedFoldDates,
         contextForMonth: month => ({
-          locale, settings, selectedIso, todayIso: "2026-09-20",
+          locale, settings, selectedIso, todayIso,
           nameEditor, expandedLinks, lens: resolveMarginLens(lensId, lensesForMonth(month), settings, locale),
           onOpenLinkedNote: async path => { output.textContent = `Open linked note: ${path}`; },
           onNameChange: (iso, name) => {
@@ -178,5 +182,10 @@ for (const width of widths) {
       restoreFocus();
     };
     render();
+    if (params.has("linked")) window.requestAnimationFrame(() => {
+      const failures = checkLinkedCaseLayout(root, params.has("mobile") && !params.has("large"));
+      output.dataset.layoutCheck = failures.length ? "fail" : "pass";
+      output.textContent = failures.length ? failures.join("; ") : "Layout checks passed · 8 cases";
+    });
   }
 }

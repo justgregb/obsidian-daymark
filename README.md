@@ -44,7 +44,7 @@ Give a day an optional name without changing its Markdown note. Click the name a
 
 Directly linked local Markdown notes appear as smaller, dotted-underlined titles. The first is always visible, beneath a saved name or beside an unnamed date. Click a title to open it; Ctrl/Cmd-click opens a new tab. A count and chevron reveal additional titles without overlapping later days. Hovering a title reveals its full name and folder.
 
-**Days with linked notes use the day’s context menu for naming and renaming.** They have no pencil or direct-click naming action. Right-click the row and choose **Name day**, **Rename day**, or **Clear name**. Shift+F10 and the keyboard menu key open the same menu. Finishing keyboard editing returns focus to the date. Other days retain direct naming and F2.
+**Days with linked notes have no pencil.** On mobile, tap an existing day name or **Today** to rename it; tapping a linked title opens that note. On desktop, use the day’s context menu for naming and renaming: right-click the row and choose **Name day**, **Rename day**, or **Clear name**. Shift+F10 and the keyboard menu key open the same menu. Other days retain direct naming and F2.
 
 Names are stored in local plugin settings. Naming or clearing a name never creates, renames, or edits a note. Full emoji sequences remain intact and appear only once while editing.
 
@@ -163,6 +163,8 @@ After the build succeeds, copy `main.js`, `manifest.json`, and `styles.css` into
 
 For Margin layout QA, run `node scripts/build-margin-fixture.mjs` and serve the repository locally. `tests/visual/daymark-margin.html` renders the production margin component and stylesheet at 200px, 285px, and 320px in light and dark themes.
 
+Add `?linked=1&mobile=1` for eight fictional mobile row cases, with browser geometry checks for row height, overflow, overlapping controls, and clipped text. The cases cover names with and without emoji, long names, one or several links, unnamed and emoji-only days, Today, and ordinary rows. Add `&large=1` for larger fonts; omit `mobile=1` for desktop. These checks use the shared renderer and shipped CSS, with no vault-specific styles or data.
+
 Public descriptions live in `public-copy.json`. After editing it, run `npm run copy:sync` to update local surfaces and `npm run copy:show` to print the GitHub and Community Directory text. Production builds fail if the local copy has drifted.
 
 ## Privacy and safety
@@ -187,7 +189,7 @@ Daymark is free and open source. If it makes journaling a little nicer, you can 
 
 ## Release status
 
-Version `0.3.1` improves Margin's CSS compatibility and reduces repeated layout work while preserving its design. Release downloads are published on the [GitHub releases page](https://github.com/justgregb/obsidian-daymark/releases).
+Version `0.3.2` fixes oversized mobile Margin rows, restores direct renaming for mobile day names above linked notes, and keeps recurring-day shading visible when a day is selected or marked Today. Release downloads are published on the [GitHub releases page](https://github.com/justgregb/obsidian-daymark/releases).
 
 ## License
 

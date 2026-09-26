@@ -1,4 +1,4 @@
-import { Menu, Notice, setIcon, setTooltip, type TooltipOptions } from "obsidian";
+import { Menu, Notice, Platform, setIcon, setTooltip, type TooltipOptions } from "obsidian";
 import { parseIsoDate, toDate, toIsoDate } from "./date";
 import { dateTimeFormatter, numberFormatter } from "./intl-cache";
 import { marginWireStyle, marginWritingCoil, marginWritingWords } from "./margin-calendar";
@@ -132,7 +132,9 @@ function createDayName(
     const nameText = updateMark(savedName);
     const displayName = savedName ? nameText : today ? "Today" : "";
     row.toggleClass("is-unnamed", !displayName);
-    if (contextMenuOnly) {
+    // Keep linked-only rows free of an empty rename control. Existing labels
+    // remain directly editable on mobile without hijacking their links.
+    if (contextMenuOnly && (!Platform.isMobile || !displayName)) {
       if (displayName) {
         const name = slot.createSpan("daymark-margin-name is-readonly");
         const text = name.createSpan({ cls: "daymark-margin-name-text", text: displayName });
